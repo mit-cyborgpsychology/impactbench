@@ -17,7 +17,7 @@ $persona
 USER GOAL:
 $user_goal
 
-$pinpoint_block
+$landmarks_block
 $adversarial_block
 OUTPUT FORMAT:
   Thought: [brief reasoning about what to say next]

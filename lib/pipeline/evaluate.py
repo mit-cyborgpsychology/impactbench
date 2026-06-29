@@ -28,7 +28,8 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
         key=lambda r: f"{r['id']}__s{r.get('_sample', 0)}__{r['target']['id']}.json",
     )
     def evaluate_step(row):
-        scores, usage = ev.evaluate_batch(row, metrics, cfg["evaluator_model"])
+        metric = [m for m in metrics if m["id"] == row["metric_id"]]
+        scores, usage = ev.evaluate_batch(row, metric, cfg["evaluator_model"])
         base = {k: v for k, v in row.items() if k not in _DROP}
         base["target_model"] = row["target"]["id"]
         base["sample"] = row.get("_sample", 0)

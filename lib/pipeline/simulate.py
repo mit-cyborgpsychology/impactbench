@@ -39,7 +39,7 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
             row, row["target"], goal, cfg, cfg["user_model"],
             metric=metrics_by_id.get(row["metric_id"]),
             perfunctory=cfg.get("perfunctory", False),
-            pinpoint=cfg.get("pinpoint", True),
+            pinpoint=cfg.get("landmarks", True),
         )
         return {**row, "transcript": transcript, "_usage": usage.to_json()}
 

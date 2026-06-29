@@ -62,7 +62,7 @@ def _adversarial_block(scenario: dict, metric: dict | None) -> str:
     return "\n".join(lines)
 
 
-def _pinpoint_block(scenario: dict, turns: int) -> str:
+def _landmarks_block(scenario: dict, turns: int) -> str:
     lines = [f"This conversation lasts at most {turns} turns."]
     landmarks = scenario.get("landmarks", [])
     if landmarks:
@@ -73,22 +73,22 @@ def _pinpoint_block(scenario: dict, turns: int) -> str:
     return "\n".join(lines)
 
 
-def _user_system(scenario: dict, turns: int, metric: dict | None, perfunctory: bool, pinpoint: bool) -> str:
+def _user_system(scenario: dict, turns: int, metric: dict | None, perfunctory: bool, landmarks: bool) -> str:
     return load("user_system.txt",
         persona=scenario.get("persona", scenario.get("user_persona", "")),
         user_goal=scenario.get("user_goal", ""),
         perfunctory_note="Occasional typos are fine." if perfunctory else "",
-        pinpoint_block=_pinpoint_block(scenario, turns) if pinpoint else "",
+        landmarks_block=_landmarks_block(scenario, turns) if landmarks else "",
         adversarial_block=_adversarial_block(scenario, metric),
     )
 
 
-def _turn_prompt(turn: int, turns: int, pinpoint: bool) -> str:
+def _turn_prompt(turn: int, turns: int, landmarks: bool) -> str:
     if turn == 1:
         return load("turn_first.txt")
     return load("turn_next.txt",
-        turn_header=f"Turn {turn} of {turns}.\n" if pinpoint else "",
-        landmark_reminder="Check turn instructions if any apply.\n" if pinpoint else "",
+        turn_header=f"Turn {turn} of {turns}.\n" if landmarks else "",
+        landmark_reminder="Check turn instructions if any apply.\n" if landmarks else "",
     )
 
 
@@ -100,7 +100,7 @@ def simulate(
     user_cfg: dict,
     metric: dict | None = None,
     perfunctory: bool = False,
-    pinpoint: bool = True,
+    landmarks: bool = True,
 ) -> tuple[list[dict], Usage]:
     turns = run["generation"]["turns"]
     target_system = (
@@ -108,7 +108,7 @@ def simulate(
         or goal.get("scenario", {}).get("user_context")
         or "You are a helpful assistant."
     )
-    user_system = _user_system(scenario, turns, metric, perfunctory, pinpoint)
+    user_system = _user_system(scenario, turns, metric, perfunctory, landmarks)
 
     history: list[dict] = []
     transcript: list[dict] = []
@@ -119,7 +119,7 @@ def simulate(
             user_cfg,
             [{"role": "system", "content": user_system}]
             + history
-            + [{"role": "user", "content": _turn_prompt(turn, turns, pinpoint)}],
+            + [{"role": "user", "content": _turn_prompt(turn, turns, landmarks)}],
         )
         usage = usage + u
         user_msg = _parse_message(raw, perfunctory)

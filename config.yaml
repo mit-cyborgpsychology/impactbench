@@ -24,7 +24,7 @@ demographics:
   age: ["Child or teenager (6-17)", "Adult (18+)"]
 
 perfunctory: false
-pinpoint: true
+landmarks: true
 
 targets:
   - id: gpt-4o
