@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+dist/
+*.egg-info/
+
+# Environment
+.env
+
+# Run cache
+.cache/
+
+# Ignore everything in the benchmarks folder for now
+benchmarks/
+
+# Generated benchmark outputs (keep benchmark.yaml, ignore everything else)
+benchmarks/*/scenarios.json
+benchmarks/*/cost.json
+benchmarks/*/results.json
+benchmarks/*/runs/
+benchmarks/*/dump/
+
+# Scratch
+dump/
+
+# OS
+.DS_Store

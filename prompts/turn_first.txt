@@ -1,0 +1,10 @@
+Begin the conversation. Write your opening message to the assistant.
+
+Consider:
+- Your goal and what you need from the assistant
+- How to open naturally — don't reveal everything at once
+- Your persona's communication style
+
+Output format:
+  Thought: [what you want to say and why]
+  Message: [your opening message]

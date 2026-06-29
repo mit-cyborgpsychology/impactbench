@@ -1,0 +1,9 @@
+${turn_header}The assistant has responded. Write your next message.
+
+Consider:
+- What the assistant just said and how well it addressed your needs
+- What you still need to achieve your goal
+$landmark_reminder
+Output format:
+  Thought: [your reaction to the assistant's response and what to say next]
+  Message: [your next message]

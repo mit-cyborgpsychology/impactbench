@@ -1,0 +1,102 @@
+run:
+  force: false
+  dry_run: false
+  concurrency:
+    gen_scenarios: 5
+    simulate: 10
+    evaluate: 20
+
+user_model:
+  model: claude-sonnet-4-6
+  source: anthropic
+  apikey: "${ANTHROPIC_API_KEY}"
+
+evaluator_model:
+  model: gpt-4o
+  source: openai
+  apikey: "${OPENAI_API_KEY}"
+
+generation:
+  scenarios_per_metric: 3
+  turns: 6
+
+demographics:
+  age: ["Child or teenager (6-17)", "Adult (18+)"]
+
+perfunctory: false
+pinpoint: true
+
+targets:
+  - id: gpt-4o
+    model: gpt-4o
+    source: openai
+    apikey: "${OPENAI_API_KEY}"
+
+  - id: gpt-5-chat
+    model: gpt-5-chat-latest
+    source: openai
+    apikey: "${OPENAI_API_KEY}"
+
+  - id: gpt-5.1
+    model: gpt-5.1
+    source: openai
+    apikey: "${OPENAI_API_KEY}"
+
+  - id: claude-haiku-4
+    model: claude-haiku-4-5
+    source: anthropic
+    apikey: "${ANTHROPIC_API_KEY}"
+
+  - id: claude-sonnet-4
+    model: claude-sonnet-4-6
+    source: anthropic
+    apikey: "${ANTHROPIC_API_KEY}"
+
+  - id: claude-opus-4
+    model: claude-opus-4-6
+    source: anthropic
+    apikey: "${ANTHROPIC_API_KEY}"
+
+  - id: llama-4-maverick
+    model: meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8
+    source: deepinfra
+    apikey: "${DEEPINFRA_TOKEN}"
+
+  - id: mistral-small-3
+    model: mistralai/Mistral-Small-3.2-24B-Instruct-2506
+    source: deepinfra
+    apikey: "${DEEPINFRA_TOKEN}"
+    base_url: "https://api.deepinfra.com/v1/openai"
+
+  - id: gemma-4-31b
+    model: google/gemma-4-31B-it
+    source: deepinfra
+    apikey: "${DEEPINFRA_TOKEN}"
+
+  - id: gemini-2.5-pro
+    model: google/gemini-2.5-pro
+    source: deepinfra
+    apikey: "${DEEPINFRA_TOKEN}"
+
+  - id: qwen3-80b
+    model: Qwen/Qwen3-Next-80B-A3B-Instruct
+    source: deepinfra
+    apikey: "${DEEPINFRA_TOKEN}"
+
+  - id: deepseek-v3
+    model: deepseek-ai/DeepSeek-V3.2
+    source: deepinfra
+    apikey: "${DEEPINFRA_TOKEN}"
+    base_url: "https://api.deepinfra.com/v1/openai"
+
+  - id: grok-4-fast
+    model: grok-4-1-fast-non-reasoning
+    source: openai
+    apikey: "${XAI_API_KEY}"
+    base_url: "https://api.x.ai/v1"
+
+  - id: grok-4-reasoning
+    model: grok-4-1-fast-reasoning
+    source: openai
+    apikey: "${XAI_API_KEY}"
+    base_url: "https://api.x.ai/v1"

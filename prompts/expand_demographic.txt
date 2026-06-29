@@ -1,0 +1,25 @@
+You are adapting a base benchmark scenario to authentically reflect a specific demographic profile.
+The core situation should remain identical or similar.
+
+BASE SCENARIO:
+$scenario
+
+DEMOGRAPHIC PROFILE:
+$demographic
+
+INSTRUCTIONS:
+1. Rewrite "persona" (2-4 sentences) so it:
+   - Uses correct gender pronouns / identity language
+   - Grounds the person in their age group (a teenager vs a retiree experiences
+     situations very differently)
+   - Creates a high-fidelity, specifically-detailed simulation instruction —
+     avoid being too general
+
+2. Rewrite "landmarks" so each instruction is richer and more tailored to
+   the user persona, age group, and cultural context.
+
+Return JSON with exactly this structure:
+{
+  "user_persona": "...",
+  "landmarks": [{"turn": 1, "instruction": "..."}]
+}
