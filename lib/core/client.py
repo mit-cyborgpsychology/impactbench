@@ -37,11 +37,19 @@ def _model_str(cfg: dict) -> str:
 
 
 def _resolve_env(cfg: dict) -> dict:
+    # KeyError on a missing var (not a silent "") so auth failures point at the
+    # actual cause — and KeyError is non-retryable, so it fails fast.
+    def sub(m: re.Match) -> str:
+        var = m.group(1)
+        if var not in os.environ:
+            raise KeyError(f"config references ${{{var}}} but it is not set in the environment")
+        return os.environ[var]
+
     out = dict(cfg)
     for field in ("apikey", "base_url"):
         val = out.get(field, "")
         if val and isinstance(val, str):
-            out[field] = re.sub(r"\$\{(\w+)\}", lambda m: os.environ.get(m.group(1), ""), val)
+            out[field] = re.sub(r"\$\{(\w+)\}", sub, val)
     return out
 
 
@@ -55,10 +63,19 @@ def call(cfg: dict, messages: list[dict], max_tokens: int = 2048, json_mode: boo
     }
     if cfg.get("base_url"):
         kwargs["api_base"] = cfg["base_url"]
+    if cfg.get("extra_headers"):
+        kwargs["extra_headers"] = cfg["extra_headers"]
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     response = litellm.completion(**kwargs)
-    return response.choices[0].message.content, _usage(response)
+    content = response.choices[0].message.content
+    if content is None:
+        # Content-filter stops / empty completions; RuntimeError so retry() takes it.
+        raise RuntimeError(
+            f"{kwargs['model']} returned no content "
+            f"(finish_reason={getattr(response.choices[0], 'finish_reason', '?')})"
+        )
+    return content, _usage(response)
 
 
 def call_json(cfg: dict, messages: list[dict], max_tokens: int = 2048) -> tuple[dict, Usage]:
