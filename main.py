@@ -23,8 +23,8 @@ try:
 except ImportError:
     pass
 
-ROOT = Path(__file__).parent
-
+from lib import config
+from lib.paths import ROOT, BENCHMARKS
 from lib.pipeline import gen_metrics, gen_scenarios, simulate, evaluate, aggregate
 
 
@@ -38,93 +38,56 @@ def target_ids(cfg: dict) -> list[str]:
 
 def list_benchmarks() -> list[str]:
     return sorted(
-        p.name for p in (ROOT / "benchmarks").iterdir()
+        p.name for p in BENCHMARKS.iterdir()
         if p.is_dir() and (p / "benchmark.yaml").exists()
     )
 
 
 def phase_done(phase: str, benchmark: str, model: str = "") -> bool:
-    bench_dir = ROOT / "benchmarks" / benchmark
+    bench_dir = BENCHMARKS / benchmark
     goal = bench_dir / "benchmark.yaml"
-    has_metrics = goal.exists() and bool(
-        yaml.safe_load(goal.read_text()).get("metrics")
-    )
+
+    if phase == "gen_metrics":
+        return goal.exists() and bool(yaml.safe_load(goal.read_text()).get("metrics"))
+
     paths = {
-        "gen_metrics":   Path("__done__") if has_metrics else Path("__missing__"),
         "gen_scenarios": bench_dir / "scenarios.json",
         "simulate":      bench_dir / "runs" / model / "conversations.json",
         "evaluate":      bench_dir / "runs" / model / "scores.json",
-        "aggregate":     bench_dir / "results.json",
     }
-    return paths.get(phase, Path("")).exists()
+    return phase in paths and paths[phase].exists()
 
 
-def _skip(label: str) -> None:
-    print(f"  [skip] {label} — set run.force: true in config.yaml to re-run")
+def run_phase(phase: str, benchmark: str, cfg: dict, model: str = "") -> None:
+    label = f"{phase} {benchmark}" + (f"/{model}" if model else "")
+    if config.dry_run(cfg):
+        return print(f"  [dry-run] {label}")
+    # aggregate always re-runs: it is cheap and must pick up new model runs.
+    if phase != "aggregate" and not config.force(cfg) and phase_done(phase, benchmark, model):
+        return print(f"  [skip] {label} — set run.force: true in config.yaml to re-run")
 
-
-def _dry(label: str) -> None:
-    print(f"  [dry-run] {label}")
-
-
-def run_gen_metrics(benchmark: str, cfg: dict) -> None:
-    run_cfg = cfg.get("run", {})
-    label = f"gen_metrics {benchmark}"
-    if run_cfg.get("dry_run"):
-        return _dry(label)
-    if not run_cfg.get("force") and phase_done("gen_metrics", benchmark):
-        return _skip(label)
-    gen_metrics.run(benchmark, cfg)
-
-
-def run_gen_scenarios(benchmark: str, cfg: dict) -> None:
-    run_cfg = cfg.get("run", {})
-    label = f"gen_scenarios {benchmark}"
-    if run_cfg.get("dry_run"):
-        return _dry(label)
-    if not run_cfg.get("force") and phase_done("gen_scenarios", benchmark):
-        return _skip(label)
-    gen_scenarios.run(benchmark, cfg)
-
-
-def run_simulate(benchmark: str, model: str, cfg: dict) -> None:
-    run_cfg = cfg.get("run", {})
-    label = f"simulate {benchmark}/{model}"
-    if run_cfg.get("dry_run"):
-        return _dry(label)
-    if not run_cfg.get("force") and phase_done("simulate", benchmark, model):
-        return _skip(label)
-    simulate.run(benchmark, model, cfg)
-
-
-def run_evaluate(benchmark: str, model: str, cfg: dict) -> None:
-    run_cfg = cfg.get("run", {})
-    label = f"evaluate {benchmark}/{model}"
-    if run_cfg.get("dry_run"):
-        return _dry(label)
-    if not run_cfg.get("force") and phase_done("evaluate", benchmark, model):
-        return _skip(label)
-    evaluate.run(benchmark, model, cfg)
-
-
-def run_aggregate(benchmark: str, cfg: dict) -> None:
-    if cfg.get("run", {}).get("dry_run"):
-        return _dry(f"aggregate {benchmark}")
-    aggregate.run(benchmark)
+    runners = {
+        "gen_metrics":   lambda: gen_metrics.run(benchmark, cfg),
+        "gen_scenarios": lambda: gen_scenarios.run(benchmark, cfg),
+        "simulate":      lambda: simulate.run(benchmark, model, cfg),
+        "evaluate":      lambda: evaluate.run(benchmark, model, cfg),
+        "aggregate":     lambda: aggregate.run(benchmark),
+    }
+    runners[phase]()
 
 
 def run_all(benchmark: str, models: list[str], cfg: dict) -> None:
     print(f"\n[{benchmark}] 1/5 gen_metrics")
-    run_gen_metrics(benchmark, cfg)
+    run_phase("gen_metrics", benchmark, cfg)
     print(f"\n[{benchmark}] 2/5 gen_scenarios")
-    run_gen_scenarios(benchmark, cfg)
+    run_phase("gen_scenarios", benchmark, cfg)
     for model in models:
         print(f"\n[{benchmark}/{model}] 3/5 simulate")
-        run_simulate(benchmark, model, cfg)
+        run_phase("simulate", benchmark, cfg, model)
         print(f"\n[{benchmark}/{model}] 4/5 evaluate")
-        run_evaluate(benchmark, model, cfg)
+        run_phase("evaluate", benchmark, cfg, model)
     print(f"\n[{benchmark}] 5/5 aggregate")
-    run_aggregate(benchmark, cfg)
+    run_phase("aggregate", benchmark, cfg)
 
 
 def main() -> None:
@@ -144,6 +107,9 @@ def main() -> None:
     targets = target_ids(cfg)
 
     if args.benchmark == "all":
+        if args.phase != "all" or args.model:
+            parser.error("'all' benchmarks runs every phase and target — "
+                         "phase/model arguments would be ignored")
         for b in list_benchmarks():
             run_all(b, targets, cfg)
 
@@ -151,20 +117,11 @@ def main() -> None:
         models = [args.model] if args.model else targets
         run_all(args.benchmark, models, cfg)
 
-    elif args.phase == "gen_metrics":
-        run_gen_metrics(args.benchmark, cfg)
+    elif args.phase in ("simulate", "evaluate") and not args.model:
+        parser.error(f"model required for '{args.phase}'")
 
-    elif args.phase == "gen_scenarios":
-        run_gen_scenarios(args.benchmark, cfg)
-
-    elif args.phase == "aggregate":
-        run_aggregate(args.benchmark, cfg)
-
-    elif args.phase in ("simulate", "evaluate"):
-        if not args.model:
-            parser.error(f"model required for '{args.phase}'")
-        fn = run_simulate if args.phase == "simulate" else run_evaluate
-        fn(args.benchmark, args.model, cfg)
+    else:
+        run_phase(args.phase, args.benchmark, cfg, args.model or "")
 
     print("\ndone.")
 

@@ -2,17 +2,14 @@
 Phase 4: aggregate scores across all model runs.
 """
 from __future__ import annotations
-import json
-from pathlib import Path
 
 from lib.core import aggregate as agg
+from lib.paths import BENCHMARKS
 from lib.task import write_json
-
-ROOT = Path(__file__).parent.parent.parent
 
 
 def run(benchmark: str) -> None:
-    bench_dir = ROOT / "benchmarks" / benchmark
+    bench_dir = BENCHMARKS / benchmark
     scores = agg.load_all_scores(str(bench_dir))
 
     by_model: dict[str, list] = {}

@@ -1,14 +1,12 @@
 from __future__ import annotations
-from pathlib import Path
 
 from lib.core import gen_metrics as gen, cost
+from lib.paths import BENCHMARKS
 from lib.pipeline.utils import load_yaml, save_yaml
-
-ROOT = Path(__file__).parent.parent.parent
 
 
 def run(benchmark: str, cfg: dict) -> None:
-    bench_dir = ROOT / "benchmarks" / benchmark
+    bench_dir = BENCHMARKS / benchmark
     goal = load_yaml(bench_dir / "benchmark.yaml")
 
     metrics, usage = gen.generate_metrics(

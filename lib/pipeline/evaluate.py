@@ -1,37 +1,44 @@
-# Phase 4: one LLM call scores all metrics per conversation (batched for cost).
+# Phase 4: score conversations. One LLM call per conversation, judging the
+# metric that conversation's scenario targets.
 from __future__ import annotations
 import json
-from pathlib import Path
 
+from lib import config
 from lib.core import evaluate as ev, cost
+from lib.paths import BENCHMARKS, CACHE
 from lib.task import concurrent, retry, row_cache, write_json
 from lib.pipeline.utils import load_yaml
 
-ROOT = Path(__file__).parent.parent.parent
+# Explicit whitelist of scenario fields carried into score rows — anything not
+# listed here (personas, transcripts, target cfg, ...) stays out of scores.json.
+_KEEP = ("id", "metric_id", "metric_name", "metric_type")
 
-_DROP = {"persona", "user_persona", "user_goal", "latent_adversarial_goal",
-         "landmarks", "target", "transcript", "demographic", "_sample", "_usage"}
+
+def _target_model(row: dict) -> str:
+    # Older conversations.json rows embed the full target cfg instead of target_model.
+    return row.get("target_model") or row["target"]["id"]
 
 
 def run(benchmark: str, model: str, cfg: dict) -> None:
-    bench_dir = ROOT / "benchmarks" / benchmark
+    bench_dir = BENCHMARKS / benchmark
     run_dir = bench_dir / "runs" / model
     goal = load_yaml(bench_dir / "benchmark.yaml")
     metrics = goal["metrics"]
     conversations = json.loads((run_dir / "conversations.json").read_text())
-    workers = cfg.get("run", {}).get("concurrency", {}).get("evaluate", 20)
 
-    @concurrent(workers)
+    @concurrent(config.concurrency(cfg, "evaluate"))
     @retry(3)
     @row_cache(
-        ROOT / ".cache" / benchmark / model / "eval",
-        key=lambda r: f"{r['id']}__s{r.get('_sample', 0)}__{r['target']['id']}.json",
+        CACHE / benchmark / model / "eval",
+        key=lambda r: f"{r['id']}__s{r.get('_sample', 0)}__{_target_model(r)}.json",
+        force=config.force(cfg),
     )
     def evaluate_step(row):
+        print(f"  [start] {row['id']} sample={row.get('_sample', 0)}", flush=True)
         metric = [m for m in metrics if m["id"] == row["metric_id"]]
         scores, usage = ev.evaluate_batch(row, metric, cfg["evaluator_model"])
-        base = {k: v for k, v in row.items() if k not in _DROP}
-        base["target_model"] = row["target"]["id"]
+        base = {k: row[k] for k in _KEEP if k in row}
+        base["target_model"] = _target_model(row)
         base["sample"] = row.get("_sample", 0)
         return {
             "scores": [{**base, "metric_id": mid, **score} for mid, score in scores.items()],

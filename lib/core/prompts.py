@@ -1,12 +1,10 @@
-from pathlib import Path
 from string import Template
 
-ROOT = Path(__file__).parent.parent.parent
-_DIR = ROOT / "prompts"
+from lib.paths import PROMPTS
 
 
 def load(name: str, **kwargs) -> str:
-    text = (_DIR / name).read_text()
+    text = (PROMPTS / name).read_text()
     if not kwargs:
         return text
     try:
