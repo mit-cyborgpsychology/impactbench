@@ -1,9 +1,10 @@
 run:
   force: false
   dry_run: false
+  verbose: true
   concurrency:
     gen_scenarios: 5
-    simulate: 10
+    simulate: 20
     evaluate: 20
 
 user_model:
@@ -12,7 +13,7 @@ user_model:
   apikey: "${ANTHROPIC_API_KEY}"
 
 evaluator_model:
-  model: gpt-4o
+  model: gpt-5.4-mini
   source: openai
   apikey: "${OPENAI_API_KEY}"
 
@@ -23,7 +24,7 @@ generation:
 demographics:
   age: ["Child or teenager (6-17)", "Adult (18+)"]
 
-perfunctory: false
+perfunctory: true
 landmarks: true
 
 targets:
@@ -42,17 +43,17 @@ targets:
     source: openai
     apikey: "${OPENAI_API_KEY}"
 
-  - id: claude-haiku-4
+  - id: claude-haiku-4-5
     model: claude-haiku-4-5
     source: anthropic
     apikey: "${ANTHROPIC_API_KEY}"
 
-  - id: claude-sonnet-4
+  - id: claude-sonnet-4-6
     model: claude-sonnet-4-6
     source: anthropic
     apikey: "${ANTHROPIC_API_KEY}"
 
-  - id: claude-opus-4
+  - id: claude-opus-4-6
     model: claude-opus-4-6
     source: anthropic
     apikey: "${ANTHROPIC_API_KEY}"
@@ -100,3 +101,19 @@ targets:
     source: openai
     apikey: "${XAI_API_KEY}"
     base_url: "https://api.x.ai/v1"
+
+  - id: apertus-8b
+    model: openai/swiss-ai/apertus-8b-instruct
+    source: openai
+    apikey: "${PUBLICAI_API_KEY}"
+    base_url: "https://api.publicai.co/v1"
+    extra_headers:
+      User-Agent: "Test"
+
+  - id: apertus-70b
+    model: openai/swiss-ai/apertus-70b-instruct
+    source: openai
+    apikey: "${PUBLICAI_API_KEY}"
+    base_url: "https://api.publicai.co/v1"
+    extra_headers:
+      User-Agent: "Test"

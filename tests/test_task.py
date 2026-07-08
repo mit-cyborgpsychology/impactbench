@@ -85,6 +85,22 @@ def test_custom_key(tmp_path):
     assert (tmp_path / "gpt-4o__s001.json").exists()
 
 
+def test_force_bypasses_cache(tmp_path):
+    calls = []
+    (tmp_path / "a.json").write_text(json.dumps({"id": "a", "stale": True}))
+
+    @concurrent(1)
+    @row_cache(tmp_path, force=True)
+    def step(row):
+        calls.append(row["id"])
+        return {**row, "done": True}
+
+    results = step([{"id": "a"}])
+    assert calls == ["a"]  # cache ignored, row recomputed
+    assert results[0] == {"id": "a", "done": True}
+    assert json.loads((tmp_path / "a.json").read_text()) == {"id": "a", "done": True}
+
+
 # --- retry ---
 
 def test_retry_success_first_try():
@@ -121,6 +137,19 @@ def test_retry_exhaustion_raises():
 
     with pytest.raises(RuntimeError, match="always fails"):
         fn({"id": "a"})
+
+
+def test_retry_fails_fast_on_programming_errors():
+    calls = []
+
+    @retry(3, sleep_fn=lambda _: None)
+    def fn(row):
+        calls.append(1)
+        raise KeyError("metric_id")
+
+    with pytest.raises(KeyError):
+        fn({"id": "a"})
+    assert len(calls) == 1  # no retries for non-retryable exceptions
 
 
 def test_retry_exponential_backoff():

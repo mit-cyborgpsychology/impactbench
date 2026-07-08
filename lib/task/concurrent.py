@@ -24,6 +24,7 @@ def concurrent(workers: int):
 
             with ThreadPoolExecutor(max_workers=workers) as pool:
                 future_to_idx = {pool.submit(fn, item): i for i, item in enumerate(items)}
+                print(f"  [0/{len(items)} done, {len(future_to_idx)} in flight]", end="\r", flush=True)
                 for future in as_completed(future_to_idx):
                     idx = future_to_idx[future]
                     exc = future.exception()
@@ -33,7 +34,7 @@ def concurrent(workers: int):
                     else:
                         results[idx] = future.result()
                         done += 1
-                        print(f"  [{done}/{len(items)}]", end="\r", flush=True)
+                        print(f"  [{done}/{len(items)} done]", end="\r", flush=True)
 
             print()
             if first_exc is not None:
