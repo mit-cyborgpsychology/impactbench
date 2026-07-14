@@ -600,57 +600,62 @@ def get_s3():
     )
 
 
-def upload_if_changed(s3, key: str, body: bytes, content_type: str = "application/json") -> str:
-    """PUT only if content differs from what's already at `key` in R2.
+def remote_etags(s3, prefix: str) -> dict[str, str]:
+    """{key: md5} for every object under `prefix`, via one paginated LIST.
 
     R2/S3 ETag is the MD5 hex digest for non-multipart uploads (true for all
-    objects here — small JSON files), so a HEAD + compare avoids re-uploading
-    unchanged content.
+    objects here — small JSON files), so listing the bucket once lets us decide
+    what changed in memory instead of a HEAD per file. ~1 call per 1000 keys
+    versus one round-trip per object.
     """
-    from botocore.exceptions import ClientError
+    etags: dict[str, str] = {}
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=R2_BUCKET, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            etags[obj["Key"]] = obj["ETag"].strip('"')
+    return etags
 
-    new_hash = hashlib.md5(body).hexdigest()
-    try:
-        head = s3.head_object(Bucket=R2_BUCKET, Key=key)
-        if head["ETag"].strip('"') == new_hash:
-            return "skipped"
-    except ClientError as e:
-        if e.response.get("Error", {}).get("Code") not in ("404", "NoSuchKey", "NotFound"):
-            raise
 
+def _put(s3, key: str, body: bytes, content_type: str = "application/json"):
     s3.put_object(Bucket=R2_BUCKET, Key=key, Body=body, ContentType=content_type)
-    return "uploaded"
 
 
 def upload_data_files(s3, files: dict[str, str]):
+    remote = remote_etags(s3, "data/")
     uploaded = skipped = 0
     for name, content in files.items():
         key = f"data/{name}"
-        result = upload_if_changed(s3, key, content.encode())
-        print(f"  {result} {key}")
-        if result == "uploaded":
-            uploaded += 1
-        else:
+        body = content.encode()
+        if remote.get(key) == hashlib.md5(body).hexdigest():
+            print(f"  skipped {key}")
             skipped += 1
+            continue
+        _put(s3, key, body)
+        print(f"  uploaded {key}")
+        uploaded += 1
     print(f"  data files: {uploaded} uploaded, {skipped} skipped")
 
 
 def upload_scenarios(s3, uploads: list[tuple[str, str]], workers: int = 32):
     total = len(uploads)
-    uploaded = skipped = errors = 0
+    # One LIST up front; then only PUT files whose content actually changed.
+    remote = remote_etags(s3, "scenarios/")
+    changed = [(k, v) for k, v in uploads
+               if remote.get(k) != hashlib.md5(v.encode()).hexdigest()]
+    skipped = total - len(changed)
+    print(f"  {len(remote)} objects already in R2; {len(changed)} changed, {skipped} unchanged")
+
+    uploaded = errors = 0
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(upload_if_changed, s3, k, v.encode()): k for k, v in uploads}
+        futures = {pool.submit(_put, s3, k, v.encode()): k for k, v in changed}
         done = 0
         for fut in as_completed(futures):
             done += 1
             try:
-                result = fut.result()
-                if result == "uploaded":
-                    uploaded += 1
-                else:
-                    skipped += 1
+                fut.result()
+                uploaded += 1
                 if done % 500 == 0:
-                    print(f"  {done}/{total}...")
+                    print(f"  {done}/{len(changed)}...")
             except Exception as e:
                 errors += 1
                 print(f"  ERROR {futures[fut]}: {e}")
