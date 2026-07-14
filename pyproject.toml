@@ -10,7 +10,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
-publish = ["boto3>=1.34"]
 
 [tool.setuptools.packages.find]
 include = ["lib*"]
