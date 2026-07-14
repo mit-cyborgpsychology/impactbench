@@ -11,6 +11,7 @@ dist/
 
 # Run cache
 .cache/
+tools/_out
 
 # Ignore everything in the benchmarks folder for now
 benchmarks/

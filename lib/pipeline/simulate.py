@@ -10,10 +10,16 @@ from lib.task import concurrent, retry, row_cache, write_json
 from lib.pipeline.utils import load_yaml
 
 
+# Scenario fields carried into a conversation row. Everything else about the
+# scenario (persona, user_goal, landmarks, demographic, ...) stays in
+# scenarios.json and is joined back on `id` by whoever needs it — storing copies
+# here only let them drift from the scenario they came from. The full target cfg
+# is never persisted; it carries the apikey field.
+_KEEP = ("id", "metric_id", "conv_id", "_sample")
+
+
 def _persistable(row: dict, transcript: list[dict], usage) -> dict:
-    # Strip the full target cfg (it carries the apikey field) from anything
-    # written to disk; keep only the id as target_model.
-    out = {k: v for k, v in row.items() if k != "target"}
+    out = {k: row[k] for k in _KEEP if k in row}
     return {**out, "target_model": row["target"]["id"],
             "transcript": transcript, "_usage": usage.to_json()}
 

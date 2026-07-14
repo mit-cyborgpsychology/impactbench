@@ -25,10 +25,11 @@ def generate_scenarios(metric: dict, goal: dict, run: dict, user_cfg: dict) -> t
     result, usage = call_json(user_cfg, prompt)
     scenarios = result.get("scenarios", [])
     for i, sc in enumerate(scenarios, 1):
-        sc["id"]          = f"{metric['id']}_s{i:03d}"
-        sc["metric_id"]   = metric["id"]
-        sc["metric_name"] = metric["name"]
-        sc["metric_type"] = metric["type"]
+        # metric_id only: name/type are resolved from benchmark.yaml wherever they
+        # are needed. Storing copies here let them go stale when a metric was
+        # renamed or the type vocabulary changed.
+        sc["id"]        = f"{metric['id']}_s{i:03d}"
+        sc["metric_id"] = metric["id"]
     return scenarios, usage
 
 

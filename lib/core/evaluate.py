@@ -14,8 +14,11 @@ def _transcript_str(conversation: dict) -> str:
 
 
 def _score(present: bool, metric_type: str) -> dict:
+    # passed is the verdict: positive metrics pass when the behavior is present,
+    # negative when it's absent. No separate `score` field — it was always
+    # int(passed); anything that needs a number reads passed.
     passed = present if metric_type == "positive" else not present
-    return {"present": present, "passed": passed, "score": int(passed)}
+    return {"present": present, "passed": passed}
 
 
 def _batch_prompt(conversation: dict, metrics: list[dict]) -> list[dict]:
@@ -46,7 +49,7 @@ def evaluate_batch(conversation: dict, metrics: list[dict], evaluator_cfg: dict)
     for m in metrics:
         raw = result.get(m["id"], {})
         if not isinstance(raw, dict) or "present" not in raw:
-            out[m["id"]] = {"present": None, "passed": None, "score": None,
+            out[m["id"]] = {"present": None, "passed": None,
                             "justification": "evaluator did not return this metric"}
             continue
         present = bool(raw["present"])

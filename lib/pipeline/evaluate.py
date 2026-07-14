@@ -9,9 +9,10 @@ from lib.paths import BENCHMARKS, CACHE
 from lib.task import concurrent, retry, row_cache, write_json
 from lib.pipeline.utils import load_yaml
 
-# Explicit whitelist of scenario fields carried into score rows — anything not
-# listed here (personas, transcripts, target cfg, ...) stays out of scores.json.
-_KEEP = ("id", "metric_id", "metric_name", "metric_type")
+# Scenario fields carried into score rows. metric_name/metric_type are NOT here:
+# they live in benchmark.yaml and are resolved by metric_id wherever needed
+# (aggregate.load_all_scores, publish.py), so a score row stores only its id.
+_KEEP = ("id", "metric_id")
 
 
 def _target_model(row: dict) -> str:
@@ -41,7 +42,10 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
         base["target_model"] = _target_model(row)
         base["sample"] = row.get("_sample", 0)
         return {
-            "scores": [{**base, "metric_id": mid, **score} for mid, score in scores.items()],
+            "scores": [
+                {**base, "metric_id": mid, **score}
+                for mid, score in scores.items()
+            ],
             "_usage": usage.to_json(),
         }
 
@@ -50,7 +54,7 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
     write_json(run_dir / "scores.json", result)
 
     cost.report((unit["_usage"] for unit in units), run_dir / "cost.json", "evaluate")
-    passed = sum(1 for r in result if r.get("score") == 1)
-    scored = sum(1 for r in result if r.get("score") is not None)
+    passed = sum(1 for r in result if r.get("passed") is True)
+    scored = sum(1 for r in result if r.get("passed") is not None)
     print(f"  evaluated {len(conversations)} conversations → {len(result)} scores "
           f"({passed}/{scored} passed)")
