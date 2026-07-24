@@ -3,6 +3,7 @@ bench-py runner.
 
     python main.py <benchmark> gen_metrics           # phase 1: generate metrics from description
     python main.py <benchmark> gen_scenarios         # phase 2: generate scenarios from metrics
+    python main.py <benchmark> gen_scenarios_from_seeds  # phase 2 alt: expand existing seed titles instead
     python main.py <benchmark> simulate <model>      # phase 3: run conversations
     python main.py <benchmark> evaluate <model>      # phase 4: score conversations
     python main.py <benchmark> aggregate             # aggregate all model runs
@@ -51,9 +52,10 @@ def phase_done(phase: str, benchmark: str, model: str = "") -> bool:
         return goal.exists() and bool(yaml.safe_load(goal.read_text()).get("metrics"))
 
     paths = {
-        "gen_scenarios": bench_dir / "scenarios.json",
-        "simulate":      bench_dir / "runs" / model / "conversations.json",
-        "evaluate":      bench_dir / "runs" / model / "scores.json",
+        "gen_scenarios":            bench_dir / "scenarios.json",
+        "gen_scenarios_from_seeds": bench_dir / "scenarios.json",
+        "simulate":                 bench_dir / "runs" / model / "conversations.json",
+        "evaluate":                 bench_dir / "runs" / model / "scores.json",
     }
     return phase in paths and paths[phase].exists()
 
@@ -67,11 +69,12 @@ def run_phase(phase: str, benchmark: str, cfg: dict, model: str = "") -> None:
         return print(f"  [skip] {label} — set run.force: true in config.yaml to re-run")
 
     runners = {
-        "gen_metrics":   lambda: gen_metrics.run(benchmark, cfg),
-        "gen_scenarios": lambda: gen_scenarios.run(benchmark, cfg),
-        "simulate":      lambda: simulate.run(benchmark, model, cfg),
-        "evaluate":      lambda: evaluate.run(benchmark, model, cfg),
-        "aggregate":     lambda: aggregate.run(benchmark),
+        "gen_metrics":              lambda: gen_metrics.run(benchmark, cfg),
+        "gen_scenarios":            lambda: gen_scenarios.run(benchmark, cfg),
+        "gen_scenarios_from_seeds": lambda: gen_scenarios.run_from_seeds(benchmark, cfg),
+        "simulate":                 lambda: simulate.run(benchmark, model, cfg),
+        "evaluate":                 lambda: evaluate.run(benchmark, model, cfg),
+        "aggregate":                lambda: aggregate.run(benchmark),
     }
     runners[phase]()
 
@@ -99,7 +102,8 @@ def main() -> None:
     parser.add_argument("benchmark", help="benchmark name or 'all'")
     parser.add_argument("--config", default="config.yaml", help="config file to use")
     parser.add_argument("phase", nargs="?", default="all",
-                        choices=["gen_metrics", "gen_scenarios", "simulate", "evaluate", "aggregate", "all"])
+                        choices=["gen_metrics", "gen_scenarios", "gen_scenarios_from_seeds",
+                                 "simulate", "evaluate", "aggregate", "all"])
     parser.add_argument("model", nargs="?")
     args = parser.parse_args()
 
