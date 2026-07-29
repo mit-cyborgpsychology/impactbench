@@ -17,14 +17,14 @@ def run(benchmark: str, cfg: dict) -> None:
     @retry(3)
     @row_cache(cache_dir, force=force)
     def generate_scenarios(metric):
-        scenarios, usage = gen.generate_scenarios(metric, goal, cfg, cfg["user_model"])
+        scenarios, usage = gen.generate_scenarios(metric, goal, cfg, cfg["gen_model"])
         return {"id": metric["id"], "scenarios": scenarios, "_usage": usage.to_json()}
 
     @concurrent(config.concurrency(cfg, "gen_scenarios_expand"))
     @retry(3)
     @row_cache(cache_dir / "expanded", force=force)
     def expand(row):
-        variants, usage = gen.expand_demographics(row["scenarios"], cfg, cfg["user_model"])
+        variants, usage = gen.expand_demographics(row["scenarios"], cfg, cfg["gen_model"])
         return {"id": f"{row['id']}_expanded", "variants": variants, "_usage": usage.to_json()}
 
     with_scenarios = generate_scenarios(goal["metrics"])

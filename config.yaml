@@ -7,6 +7,11 @@ run:
     simulate: 20
     evaluate: 20
 
+gen_model:
+  model: claude-opus-4-7
+  source: anthropic
+  apikey: "${ANTHROPIC_API_KEY}"  
+
 user_model:
   model: claude-sonnet-4-6
   source: anthropic

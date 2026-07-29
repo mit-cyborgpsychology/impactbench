@@ -12,7 +12,7 @@ def run(benchmark: str, cfg: dict) -> None:
     metrics, usage = gen.generate_metrics(
         name=goal["name"],
         description=goal["description"],
-        user_cfg=cfg["user_model"],
+        user_cfg=cfg["gen_model"],
     )
 
     goal["metrics"] = metrics
