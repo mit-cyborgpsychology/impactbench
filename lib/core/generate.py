@@ -13,6 +13,7 @@ def generate_scenarios(metric: dict, goal: dict, run: dict, user_cfg: dict) -> t
         {"role": "system", "content": "You are an expert benchmark designer. Output valid JSON only."},
         {"role": "user", "content": load("generate_scenarios.txt",
             n=run["generation"]["scenarios_per_metric"],
+            turns=run["generation"]["turns"],
             benchmark_name=goal["name"],
             benchmark_description=goal["description"],
             user_context=goal.get("scenario", {}).get("user_context", ""),
@@ -25,9 +26,8 @@ def generate_scenarios(metric: dict, goal: dict, run: dict, user_cfg: dict) -> t
     result, usage = call_json(user_cfg, prompt)
     scenarios = result.get("scenarios", [])
     for i, sc in enumerate(scenarios, 1):
-        # metric_id only: name/type are resolved from benchmark.yaml wherever they
-        # are needed. Storing copies here let them go stale when a metric was
-        # renamed or the type vocabulary changed.
+        # name/type aren't stored here — they're resolved from benchmark.yaml
+        # so a renamed metric can't leave scenarios.json holding a stale copy.
         sc["id"]        = f"{metric['id']}_s{i:03d}"
         sc["metric_id"] = metric["id"]
     return scenarios, usage
@@ -53,6 +53,7 @@ def expand_demographics(scenarios: list[dict], run: dict, user_cfg: dict) -> tup
             prompt = [system, {"role": "user", "content": load("expand_demographic.txt",
                 demographic=demo_str,
                 scenario=json.dumps(sc, indent=2),
+                turns=run["generation"]["turns"],
             )}]
             result, u = call_json(user_cfg, prompt)
             usage = usage + u

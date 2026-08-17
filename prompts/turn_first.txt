@@ -1,10 +1,12 @@
-Begin the conversation. Write your opening message to the assistant.
+Begin the conversation. Write your opening message.
 
-Consider:
-- Your goal and what you need from the assistant
-- How to open naturally — don't reveal everything at once
-- Your persona's communication style
+Ask the plain version of what's on your mind, not the fully thought-out
+one. Usually one sentence. No em dash. Leave out details you'd only bring
+up if asked. You'll get the chance later.
+
+A turn instruction, if there is one, is what you're going for, not a list
+to recite.
 
 Output format:
-  Thought: [what you want to say and why]
+  Thought: [what's on your mind, in a few words]
   Message: [your opening message]

@@ -6,12 +6,6 @@ import yaml
 
 
 def load_all_scores(bench_dir: str) -> list[dict]:
-    """Load every run's score rows, attaching metric_type from benchmark.yaml.
-
-    metric_type is the source of truth in benchmark.yaml, not in scores.json
-    (which stores only metric_id). Resolve it per row here so aggregation can
-    group by polarity without the score rows carrying a copy.
-    """
     bench = Path(bench_dir)
     spec = yaml.safe_load((bench / "benchmark.yaml").read_text())
     metric_type = {m["id"]: m.get("type") for m in spec.get("metrics") or []}

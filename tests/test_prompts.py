@@ -11,13 +11,13 @@ def test_loads_raw_when_no_kwargs():
 
 def test_substitutes_kwargs():
     out = prompts.load("expand_demographic.txt",
-                       scenario="a tired student", demographic="gender: female")
+                       scenario="a tired student", demographic="gender: female", turns=6)
     assert "a tired student" in out and "gender: female" in out
 
 
 def test_missing_key_names_template_and_key():
     with pytest.raises(KeyError) as e:
-        prompts.load("expand_demographic.txt", scenario="x")  # demographic missing
+        prompts.load("expand_demographic.txt", scenario="x", turns=6)  # demographic missing
     msg = str(e.value)
     assert "expand_demographic.txt" in msg
     assert "demographic" in msg

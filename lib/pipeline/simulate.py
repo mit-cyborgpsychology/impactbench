@@ -1,36 +1,35 @@
-# Phase 3: simulate conversations. Set generation.num_samples > 1 for multiple
-# independent samples per scenario.
 from __future__ import annotations
 import json
 
 from lib import config
 from lib.core import simulate as sim, cost
-from lib.paths import BENCHMARKS, CACHE
 from lib.task import concurrent, retry, row_cache, write_json
 from lib.pipeline.utils import load_yaml
 
 
-# Scenario fields carried into a conversation row. Everything else about the
-# scenario (persona, user_goal, landmarks, demographic, ...) stays in
-# scenarios.json and is joined back on `id` by whoever needs it — storing copies
-# here only let them drift from the scenario they came from. The full target cfg
-# is never persisted; it carries the apikey field.
+# Everything else about the scenario stays in scenarios.json and is joined
+# back on `id`, so a copy here can't go stale. The full target cfg is never
+# persisted — it carries the apikey.
 _KEEP = ("id", "metric_id", "conv_id", "_sample")
 
 
-def _persistable(row: dict, transcript: list[dict], usage) -> dict:
+def _persistable(row: dict, transcript: list[dict], user_usage, target_usage) -> dict:
     out = {k: row[k] for k in _KEEP if k in row}
     return {**out, "target_model": row["target"]["id"],
-            "transcript": transcript, "_usage": usage.to_json()}
+            "transcript": transcript,
+            "_usage_user": user_usage.to_json(),
+            "_usage_target": target_usage.to_json()}
 
 
 def run(benchmark: str, model: str, cfg: dict) -> None:
-    bench_dir = BENCHMARKS / benchmark
+    bench_dir = config.benchmarks_dir(cfg) / benchmark
     run_dir = bench_dir / "runs" / model
     goal = load_yaml(bench_dir / "benchmark.yaml")
     target = next(t for t in cfg["targets"] if t["id"] == model)
     metrics_by_id = {m["id"]: m for m in goal["metrics"]}
-    scenarios = json.loads((bench_dir / "scenarios.json").read_text())
+    all_scenarios = json.loads((bench_dir / "scenarios.json").read_text())
+    demo_filter = config.demographic_filter(cfg)
+    scenarios = [s for s in all_scenarios if config.scenario_matches_filter(s, demo_filter)]
     num_samples = config.num_samples(cfg)
 
     # Cache key encodes sample index so each sample resumes independently.
@@ -43,7 +42,7 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
     @concurrent(config.concurrency(cfg, "simulate"))
     @retry(3)
     @row_cache(
-        CACHE / benchmark / model,
+        config.cache_dir(cfg) / benchmark / model,
         key=lambda r: f"{r['id']}__s{r['_sample']}__{r['target']['id']}.json",
         force=config.force(cfg),
     )
@@ -54,11 +53,11 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
         else:
             print(f"  [start] {row['id']} sample={row['_sample']}", flush=True)
 
-        def on_turn(transcript, usage):
+        def on_turn(transcript, user_usage, target_usage):
             if checkpoint:
-                checkpoint(_persistable(row, transcript, usage))
+                checkpoint(_persistable(row, transcript, user_usage, target_usage))
 
-        transcript, usage = sim.simulate(
+        transcript, user_usage, target_usage = sim.simulate(
             row, row["target"], goal, cfg, cfg["user_model"],
             metric=metrics_by_id.get(row["metric_id"]),
             perfunctory=config.perfunctory(cfg),
@@ -67,10 +66,12 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
             resume=resume,
             on_turn=on_turn,
         )
-        return _persistable(row, transcript, usage)
+        return _persistable(row, transcript, user_usage, target_usage)
 
     result = simulate_step(rows)
     write_json(run_dir / "conversations.json", result)
 
-    cost.report((r["_usage"] for r in result), run_dir / "cost.json", "simulate")
-    print(f"  simulated {len(result)} conversations ({num_samples} sample(s) × {len(scenarios)} scenarios)")
+    cost.report((r["_usage_user"] for r in result), run_dir / "cost.json", "simulate_user")
+    cost.report((r["_usage_target"] for r in result), run_dir / "cost.json", "simulate_target")
+    filter_note = f" (filtered {len(scenarios)}/{len(all_scenarios)} by {demo_filter})" if demo_filter else ""
+    print(f"  simulated {len(result)} conversations ({num_samples} sample(s) × {len(scenarios)} scenarios){filter_note}")

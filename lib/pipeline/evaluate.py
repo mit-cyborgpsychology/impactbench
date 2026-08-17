@@ -1,17 +1,11 @@
-# Phase 4: score conversations. One LLM call per conversation, judging the
-# metric that conversation's scenario targets.
 from __future__ import annotations
 import json
 
 from lib import config
 from lib.core import evaluate as ev, cost
-from lib.paths import BENCHMARKS, CACHE
 from lib.task import concurrent, retry, row_cache, write_json
 from lib.pipeline.utils import load_yaml
 
-# Scenario fields carried into score rows. metric_name/metric_type are NOT here:
-# they live in benchmark.yaml and are resolved by metric_id wherever needed
-# (aggregate.load_all_scores, publish.py), so a score row stores only its id.
 _KEEP = ("id", "metric_id")
 
 
@@ -21,7 +15,7 @@ def _target_model(row: dict) -> str:
 
 
 def run(benchmark: str, model: str, cfg: dict) -> None:
-    bench_dir = BENCHMARKS / benchmark
+    bench_dir = config.benchmarks_dir(cfg) / benchmark
     run_dir = bench_dir / "runs" / model
     goal = load_yaml(bench_dir / "benchmark.yaml")
     metrics = goal["metrics"]
@@ -30,7 +24,7 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
     @concurrent(config.concurrency(cfg, "evaluate"))
     @retry(3)
     @row_cache(
-        CACHE / benchmark / model / "eval",
+        config.cache_dir(cfg) / benchmark / model / "eval",
         key=lambda r: f"{r['id']}__s{r.get('_sample', 0)}__{_target_model(r)}.json",
         force=config.force(cfg),
     )

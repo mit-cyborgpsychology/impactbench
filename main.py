@@ -43,8 +43,8 @@ def list_benchmarks() -> list[str]:
     )
 
 
-def phase_done(phase: str, benchmark: str, model: str = "") -> bool:
-    bench_dir = BENCHMARKS / benchmark
+def phase_done(phase: str, benchmark: str, cfg: dict, model: str = "") -> bool:
+    bench_dir = config.benchmarks_dir(cfg) / benchmark
     goal = bench_dir / "benchmark.yaml"
 
     if phase == "gen_metrics":
@@ -63,7 +63,7 @@ def run_phase(phase: str, benchmark: str, cfg: dict, model: str = "") -> None:
     if config.dry_run(cfg):
         return print(f"  [dry-run] {label}")
     # aggregate always re-runs: it is cheap and must pick up new model runs.
-    if phase != "aggregate" and not config.force(cfg) and phase_done(phase, benchmark, model):
+    if phase != "aggregate" and not config.force(cfg) and phase_done(phase, benchmark, cfg, model):
         return print(f"  [skip] {label} — set run.force: true in config.yaml to re-run")
 
     runners = {
@@ -71,7 +71,7 @@ def run_phase(phase: str, benchmark: str, cfg: dict, model: str = "") -> None:
         "gen_scenarios": lambda: gen_scenarios.run(benchmark, cfg),
         "simulate":      lambda: simulate.run(benchmark, model, cfg),
         "evaluate":      lambda: evaluate.run(benchmark, model, cfg),
-        "aggregate":     lambda: aggregate.run(benchmark),
+        "aggregate":     lambda: aggregate.run(benchmark, cfg),
     }
     runners[phase]()
 

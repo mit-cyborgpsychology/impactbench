@@ -1,7 +1,3 @@
-"""
-LLM calls via litellm. source is prepended to model ("source/model") except for openai.
-Every call returns its Usage — cost is never tracked in shared state.
-"""
 from __future__ import annotations
 import json
 import logging
@@ -31,7 +27,13 @@ def _usage(response) -> Usage:
 
 def _model_str(cfg: dict) -> str:
     source, model = cfg.get("source", "openai"), cfg["model"]
-    if source == "openai" or model.startswith(f"{source}/"):
+    if model.startswith(f"{source}/"):
+        return model
+    # source: openai normally needs no prefix, but once base_url points at an
+    # OpenAI-compatible third party (xAI, PublicAI, ...) litellm can't infer a
+    # provider from the bare model name and rejects the call outright — the
+    # "openai/" prefix forces OpenAI-compatible routing regardless of api_base.
+    if source == "openai" and not cfg.get("base_url"):
         return model
     return f"{source}/{model}"
 

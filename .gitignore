@@ -28,3 +28,5 @@ dump/
 
 # OS
 .DS_Store
+
+v2-*

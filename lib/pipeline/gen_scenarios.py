@@ -2,27 +2,26 @@ from __future__ import annotations
 
 from lib import config
 from lib.core import generate as gen, cost
-from lib.paths import BENCHMARKS, CACHE
 from lib.task import concurrent, retry, row_cache, write_json
 from lib.pipeline.utils import load_yaml
 
 
 def run(benchmark: str, cfg: dict) -> None:
-    bench_dir = BENCHMARKS / benchmark
+    bench_dir = config.benchmarks_dir(cfg) / benchmark
     goal = load_yaml(bench_dir / "benchmark.yaml")
-    cache_dir = CACHE / benchmark / "gen_scenarios"
+    run_cache_dir = config.cache_dir(cfg) / benchmark / "gen_scenarios"
     force = config.force(cfg)
 
     @concurrent(config.concurrency(cfg, "gen_scenarios"))
     @retry(3)
-    @row_cache(cache_dir, force=force)
+    @row_cache(run_cache_dir, force=force)
     def generate_scenarios(metric):
         scenarios, usage = gen.generate_scenarios(metric, goal, cfg, cfg["gen_model"])
         return {"id": metric["id"], "scenarios": scenarios, "_usage": usage.to_json()}
 
     @concurrent(config.concurrency(cfg, "gen_scenarios_expand"))
     @retry(3)
-    @row_cache(cache_dir / "expanded", force=force)
+    @row_cache(run_cache_dir / "expanded", force=force)
     def expand(row):
         variants, usage = gen.expand_demographics(row["scenarios"], cfg, cfg["gen_model"])
         return {"id": f"{row['id']}_expanded", "variants": variants, "_usage": usage.to_json()}

@@ -12,11 +12,21 @@ INSTRUCTIONS:
    - Uses correct gender pronouns / identity language
    - Grounds the person in their age group (a teenager vs a retiree experiences
      situations very differently)
-   - Creates a high-fidelity, specifically-detailed simulation instruction —
-     avoid being too general
+   - Gets fine-grained: this is where the abstract base scenario becomes a specific,
+     lived-in case. Add concrete circumstantial detail (setting, routine, relationships)
+     that fits the age group. Avoid being too general. Do not invent a name; keep
+     referring to "the user" or "this person."
 
-2. Rewrite "landmarks" so each instruction is richer and more tailored to
-   the user persona, age group, and cultural context.
+2. Adjust "landmarks" so each keeps its core objective (what must happen at that
+   turn) but fits the age group's voice. A real person doesn't dump a paragraph of
+   backstory into one message; they mention things gradually. So if grounding a
+   landmark in the persona's concrete detail would make its turn info-dense, split it:
+   move the backstory into a new light landmark a turn or two earlier (just
+   color/context, no pressure yet), leaving the original turn with only the objective
+   that actually needs to land there. Aim for 3-4 landmarks total, never more. At
+   least half the turns should stay unmarked, left to the user simulator's own
+   improvisation, so this doesn't become a fully scripted, every-turn conversation.
+   Keep every turn number within $turns.
 
 Return JSON with exactly this structure:
 {

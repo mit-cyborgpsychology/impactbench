@@ -1,15 +1,12 @@
-"""
-Phase 4: aggregate scores across all model runs.
-"""
 from __future__ import annotations
 
+from lib import config
 from lib.core import aggregate as agg
-from lib.paths import BENCHMARKS
 from lib.task import write_json
 
 
-def run(benchmark: str) -> None:
-    bench_dir = BENCHMARKS / benchmark
+def run(benchmark: str, cfg: dict) -> None:
+    bench_dir = config.benchmarks_dir(cfg) / benchmark
     scores = agg.load_all_scores(str(bench_dir))
 
     by_model: dict[str, list] = {}

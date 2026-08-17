@@ -7,7 +7,6 @@ from typing import Callable, TextIO
 
 
 def atomic_write(path: Path, write_fn: Callable[[TextIO], None]) -> None:
-    """Write to a temp file in the target directory, then rename into place."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")

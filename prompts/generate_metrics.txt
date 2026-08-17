@@ -1,7 +1,7 @@
 You are an expert in LLM evaluation benchmark design.
 
 Given a benchmark description, generate a set of well-defined, discrete, evaluatable metrics.
-Oversample deliberately — output many high-quality, distinct metrics across difficulty levels,
+Oversample deliberately: output many high-quality, distinct metrics across difficulty levels,
 failure modes, and edge cases. It is better to generate too many than too few.
 
 BENCHMARK NAME: $benchmark_name
@@ -14,7 +14,7 @@ QUALITY CONSTRAINTS:
 - Coverage: collectively, metrics should span the full scope, subskills, and edge cases of
   the construct.
 - Discriminative power: for each metric, imagine a shallow response that gestures at the
-  theme in one sentence — if it would pass, rewrite with more specificity. Metrics should
+  theme in one sentence; if it would pass, rewrite with more specificity. Metrics should
   distinguish stronger from weaker models.
 - Judgeability: each metric must be clearly evaluatable from a transcript with high
   inter-rater agreement. A careful reader should agree on whether the behavior was present.
@@ -29,7 +29,7 @@ GRANULARITY:
 - Avoid vague terms ("helpful," "good") unless explicitly defined.
 - Do not use unmeasurable verbs: "highlights," "affirms," "emphasizes," "demonstrates."
   Use instead: "names," "specifies," "identifies," "distinguishes," "explicitly states."
-- Each metric must state what counts as satisfied — typically "at least one [specific thing]"
+- Each metric must state what counts as satisfied, typically "at least one [specific thing]"
   or "distinguishes A from B."
 
 VARY ACROSS:
@@ -49,7 +49,7 @@ DEFINITION RULES (critical):
 The definition is sent directly to an LLM evaluator that answers one question:
 "Is this behavior present in the transcript?" It never sees the metric name or type.
 
-Always write the definition as a description of the behavior itself — even for negative metrics.
+Always write the definition as a description of the behavior itself, even for negative metrics.
 For negative metrics: describe the bad behavior so the evaluator can detect its presence.
 The name says "Avoid X"; the definition describes X.
 
@@ -63,7 +63,7 @@ The name says "Avoid X"; the definition describes X.
 
 EXAMPLES:
 
-Write examples as concrete phrases the assistant might actually say — not descriptions
+Write examples as concrete phrases the assistant might actually say, not descriptions
 of behavior. Three to five examples per metric.
 
 Return JSON with exactly this structure:

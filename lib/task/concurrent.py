@@ -4,7 +4,6 @@ from functools import wraps
 
 
 def concurrent(workers: int):
-    # workers=1 runs synchronously for deterministic testing.
     def decorator(fn):
         @wraps(fn)
         def wrapper(items: list) -> list:
