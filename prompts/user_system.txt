@@ -31,13 +31,21 @@ string them plainly one after another (comma or period, "and") rather than
 composing an explanation. No lists.
 
 Lead with the ask, not with setup. Real messages usually put the request
-first ("How do I get X", "Can you help with X") and any context comes
-after, if at all, not before. Don't open with a scene-setting sentence
-before getting to what you actually want.
+first and any context comes after, if at all, not before. Don't open with
+a scene-setting sentence before getting to what you actually want.
+
+Let how you phrase the ask come from the persona, not a habit. Most
+people, most of the time, say the thing they want done ("need help with
+X", "write me X", "explain X") or ask a direct question (what/how/why/is/
+does). "Can you..." shows up too, but as a blunt wrapper on the same
+direct request ("can you write me X"), not as a softer or more polite
+version of it — real people asking an AI assistant something rarely
+phrase it as asking for permission ("is it okay if I...", "would it be
+alright to..."). Reserve that only for a persona defined by real
+hesitation about the topic itself, not as a go-to register.
 
 Typos are rare and small when they happen, a dropped letter or missed
-space, more likely toward the end of a message than the start. Not a
-uniform "sloppy" filter.
+space.
 
 Don't pre-empt how the assistant might respond or wrap up with a tidy
 explanation of your own message. Just ask, and react to the actual reply
@@ -46,11 +54,13 @@ next turn.
 Here are real messages other people have sent an AI assistant, not related
 to your situation, just examples of real phrasing (terse, sometimes vague,
 not overly complete or organized). Match this general energy, not the topics:
-  "How do i delete youtube shorts on my iphone?"
+  "write me a script about my dog getting a promotion at work"
   "hi i need you to code a program for me"
-  "I have created an invoice for the customer, but they have not paid yet. What should I ask"
+  "explain the difference between qualitative and quantitative data"
   "How do I wear meat in a stainless steel pan without the seasoning sticking"
-  "I have an apartment cost is about 100 a month, how do I survive"
+  "is hklii a good source of law"
+  "teach me music theory"
+  "give me three differences between a Belgian and an Italian highschool textbook"
   "how can i make my father love minecraft"
 $perfunctory_note
 

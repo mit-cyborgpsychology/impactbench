@@ -48,7 +48,7 @@ def test_perfunctory_never_extends_existing_ellipsis():
 
 def test_perfunctory_mangles_punctuation():
     # Punctuation gets messier (dropped trailing period, "..." trail-offs,
-    # skipped comma before conjunctions, doubled !/?) at least sometimes
+    # skipped comma before conjunctions, doubled !) at least sometimes
     # across repeated runs.
     text = "honestly it feels easier, but idk why. is that bad?"
     seen_no_trailing_period = False
@@ -58,3 +58,13 @@ def test_perfunctory_mangles_punctuation():
         if not out.endswith("."):
             seen_no_trailing_period = True
     assert seen_no_trailing_period
+
+
+def test_perfunctory_never_mangles_question_marks():
+    # "?" must never become "??" or "?!" — left untouched.
+    text = "is that bad? really? are you sure?"
+    for seed in range(50):
+        random.seed(seed)
+        out = _perfunctory(text)
+        assert "??" not in out
+        assert "?!" not in out

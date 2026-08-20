@@ -6,7 +6,6 @@ _WORD_RE = re.compile(r"[A-Za-z]+")
 _MID_PERIOD_RE = re.compile(r"(?<!\.)\. (?=[a-z])")
 _CONJ_COMMA_RE = re.compile(r", (but|and|so|because|which)\b")
 _BANG_RE = re.compile(r"(?<!\!)!(?!\!)")
-_QMARK_RE = re.compile(r"(?<!\?)\?(?!\?)")
 
 
 def perfunctory(text: str) -> str:
@@ -46,7 +45,6 @@ def _mangle_punctuation(text: str) -> str:
     text = _MID_PERIOD_RE.sub(lambda m: random.choice(["... ", ". ", " "]) if random.random() < 0.1 else m.group(), text)
     text = _CONJ_COMMA_RE.sub(lambda m: f" {m.group(1)}" if random.random() < 0.1 else m.group(), text)
     text = _BANG_RE.sub(lambda m: "!!" if random.random() < 0.05 else "!", text)
-    text = _QMARK_RE.sub(lambda m: random.choice(["??", "?!"]) if random.random() < 0.05 else "?", text)
     if text.endswith(".") and not text.endswith("..."):
         if random.random() < 0.15:
             text = text[:-1]
