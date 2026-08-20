@@ -29,4 +29,6 @@ dump/
 # OS
 .DS_Store
 
-v2-*
+v0*
+v1*
+v2*

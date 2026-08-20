@@ -58,7 +58,7 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
                 checkpoint(_persistable(row, transcript, user_usage, target_usage))
 
         transcript, user_usage, target_usage = sim.simulate(
-            row, row["target"], goal, cfg, cfg["user_model"],
+            row, row["target"], cfg, cfg["user_model"],
             metric=metrics_by_id.get(row["metric_id"]),
             perfunctory=config.perfunctory(cfg),
             landmarks=config.landmarks(cfg),

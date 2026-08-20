@@ -15,7 +15,7 @@ No prompt strings should be inlined in `lib/core/*.py` — if you add a new LLM 
 | `adversarial_block.txt` | `simulate.py` | fragment — substituted into `user_system.txt` when a metric is being probed adversarially |
 | `turn_first.txt` | `simulate.py` | user — opening turn instruction to the user-simulator |
 | `turn_next.txt` | `simulate.py` | user — subsequent turn instruction to the user-simulator |
-| `default_target_system.txt` | `simulate.py` | system — fallback target system prompt when a scenario defines none |
+| `default_target_system.txt` | `simulate.py` | system — fallback target system prompt when a scenario defines none; blank on purpose, no system message is sent when empty |
 | `evaluate_system.txt` | `evaluate.py` | system — evaluator role |
 | `evaluate_batch.txt` | `evaluate.py` | user — score one conversation against a batch of metrics |
 

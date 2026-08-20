@@ -76,18 +76,33 @@ def run_phase(phase: str, benchmark: str, cfg: dict, model: str = "") -> None:
     runners[phase]()
 
 
-def run_all(benchmark: str, models: list[str], cfg: dict) -> None:
-    print(f"\n[{benchmark}] 1/5 gen_metrics")
-    run_phase("gen_metrics", benchmark, cfg)
-    print(f"\n[{benchmark}] 2/5 gen_scenarios")
-    run_phase("gen_scenarios", benchmark, cfg)
+def run_all(benchmark: str, models: list[str], cfg: dict, failures: list[str] | None = None) -> None:
+    # failures is None for a single-benchmark invocation: a phase error should
+    # still raise and stop the process there. It's only passed (and errors
+    # swallowed-and-recorded) when iterating multiple benchmarks in main(), so
+    # one broken benchmark/model can't block every other one in the batch.
+    def step(label: str, fn) -> bool:
+        print(f"\n[{label}]")
+        if failures is None:
+            fn()
+            return True
+        try:
+            fn()
+            return True
+        except Exception as exc:
+            print(f"  [FAILED] {label}: {exc}")
+            failures.append(f"{label}: {exc}")
+            return False
+
+    if not step(f"{benchmark} 1/5 gen_metrics", lambda: run_phase("gen_metrics", benchmark, cfg)):
+        return
+    if not step(f"{benchmark} 2/5 gen_scenarios", lambda: run_phase("gen_scenarios", benchmark, cfg)):
+        return
     for model in models:
-        print(f"\n[{benchmark}/{model}] 3/5 simulate")
-        run_phase("simulate", benchmark, cfg, model)
-        print(f"\n[{benchmark}/{model}] 4/5 evaluate")
-        run_phase("evaluate", benchmark, cfg, model)
-    print(f"\n[{benchmark}] 5/5 aggregate")
-    run_phase("aggregate", benchmark, cfg)
+        if not step(f"{benchmark}/{model} 3/5 simulate", lambda: run_phase("simulate", benchmark, cfg, model)):
+            continue
+        step(f"{benchmark}/{model} 4/5 evaluate", lambda: run_phase("evaluate", benchmark, cfg, model))
+    step(f"{benchmark} 5/5 aggregate", lambda: run_phase("aggregate", benchmark, cfg))
 
 
 def main() -> None:
@@ -110,8 +125,13 @@ def main() -> None:
         if args.phase != "all" or args.model:
             parser.error("'all' benchmarks runs every phase and target — "
                          "phase/model arguments would be ignored")
+        failures: list[str] = []
         for b in list_benchmarks():
-            run_all(b, targets, cfg)
+            run_all(b, targets, cfg, failures)
+        if failures:
+            print(f"\n{len(failures)} step(s) failed:")
+            for f in failures:
+                print(f"  - {f}")
 
     elif args.phase == "all":
         models = [args.model] if args.model else targets
