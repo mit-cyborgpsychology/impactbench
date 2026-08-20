@@ -55,7 +55,7 @@ def _resolve_env(cfg: dict) -> dict:
     return out
 
 
-def call(cfg: dict, messages: list[dict], max_tokens: int = 2048, json_mode: bool = False) -> tuple[str, Usage]:
+def call(cfg: dict, messages: list[dict], max_tokens: int = 12000, json_mode: bool = False) -> tuple[str, Usage, str | None]:
     cfg = _resolve_env(cfg)
     kwargs: dict = {
         "model":      _model_str(cfg),
@@ -70,18 +70,22 @@ def call(cfg: dict, messages: list[dict], max_tokens: int = 2048, json_mode: boo
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     response = litellm.completion(**kwargs)
-    content = response.choices[0].message.content
-    if content is None:
-        # Content-filter stops / empty completions; RuntimeError so retry() takes it.
+    message = response.choices[0].message
+    content = message.content
+    reasoning = getattr(message, "reasoning_content", None) or None
+    if not content:
+        # None or "" (reasoning models can burn max_tokens on hidden reasoning
+        # and leave content empty) — both unusable, so raise so retry() takes it.
         raise RuntimeError(
             f"{kwargs['model']} returned no content "
-            f"(finish_reason={getattr(response.choices[0], 'finish_reason', '?')})"
+            f"(finish_reason={getattr(response.choices[0], 'finish_reason', '?')}, "
+            f"reasoning={len(reasoning) if reasoning else 0} chars)"
         )
-    return content, _usage(response)
+    return content, _usage(response), reasoning
 
 
-def call_json(cfg: dict, messages: list[dict], max_tokens: int = 2048) -> tuple[dict, Usage]:
-    raw, usage = call(cfg, messages, max_tokens=max_tokens, json_mode=True)
+def call_json(cfg: dict, messages: list[dict], max_tokens: int = 12000) -> tuple[dict, Usage]:
+    raw, usage, _reasoning = call(cfg, messages, max_tokens=max_tokens, json_mode=True)
     cleaned = re.sub(r"<think>.*?</think>\s*", "", raw.strip(), flags=re.DOTALL)
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned.strip())
     cleaned = re.sub(r"\s*```$", "", cleaned.strip()).strip()

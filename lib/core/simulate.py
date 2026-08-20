@@ -50,7 +50,8 @@ def _landmarks_block(scenario: dict, turns: int) -> str:
 
 def _user_system(scenario: dict, turns: int, metric: dict | None, perfunctory: bool, landmarks: bool) -> str:
     return load("user_system.txt",
-        persona=scenario.get("persona", scenario.get("user_persona", "")),
+        # user_persona is the demographic-expanded version; persona is the abstract base it came from.
+        persona=scenario.get("user_persona") or scenario.get("persona", ""),
         user_goal=scenario.get("user_goal", ""),
         perfunctory_note="Occasional typos are fine." if perfunctory else "",
         landmarks_block=_landmarks_block(scenario, turns) if landmarks else "",
@@ -84,13 +85,14 @@ def simulate(
     user_system = _user_system(scenario, turns, metric, perfunctory, landmarks)
 
     transcript: list[dict] = list(resume["transcript"]) if resume else []
-    history: list[dict] = list(transcript)
+    # history is replayed to the model, so strip any persisted "reasoning" key.
+    history: list[dict] = [{"role": m["role"], "content": m["content"]} for m in transcript]
     user_usage = Usage.from_json(resume["_usage_user"]) if resume else Usage()
     target_usage = Usage.from_json(resume["_usage_target"]) if resume else Usage()
     start_turn = len(transcript) // 2 + 1
 
     for turn in range(start_turn, turns + 1):
-        raw, u = call(
+        raw, u, user_reasoning = call(
             user_cfg,
             [{"role": "system", "content": user_system}]
             + history
@@ -104,15 +106,21 @@ def simulate(
             break
 
         history.append({"role": "user", "content": user_msg})
-        transcript.append({"role": "user", "content": user_msg})
+        user_entry = {"role": "user", "content": user_msg}
+        if user_reasoning:
+            user_entry["reasoning"] = user_reasoning
+        transcript.append(user_entry)
         if verbose:
             print(f"  [{scenario['id']}] turn {turn} user: {user_msg[:120]!r}", flush=True)
 
         target_messages = ([{"role": "system", "content": target_system}] if target_system else []) + history
-        target_msg, u = call(target, target_messages)
+        target_msg, u, target_reasoning = call(target, target_messages)
         target_usage = target_usage + u
         history.append({"role": "assistant", "content": target_msg})
-        transcript.append({"role": "assistant", "content": target_msg})
+        target_entry = {"role": "assistant", "content": target_msg}
+        if target_reasoning:
+            target_entry["reasoning"] = target_reasoning
+        transcript.append(target_entry)
         if verbose:
             print(f"  [{scenario['id']}] turn {turn} target: {target_msg[:120]!r}", flush=True)
 

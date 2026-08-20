@@ -1,5 +1,5 @@
 """core/simulate helpers — message parsing, prompt blocks."""
-from lib.core.simulate import _adversarial_block, _parse_message
+from lib.core.simulate import _adversarial_block, _parse_message, _user_system
 
 
 # --- _parse_message ---
@@ -35,3 +35,21 @@ def test_adversarial_block_empty_definition_does_not_crash():
 
 def test_adversarial_block_no_metric_is_empty():
     assert _adversarial_block({}, None) == ""
+
+
+# --- _user_system ---
+
+def test_user_system_prefers_expanded_user_persona():
+    scenario = {
+        "persona": "The user had a disagreement in a close relationship.",
+        "user_persona": "The user argued with their long-term partner about the lease.",
+    }
+    prompt = _user_system(scenario, turns=6, metric=None, perfunctory=False, landmarks=False)
+    assert "long-term partner" in prompt
+    assert "The user had a disagreement in a close relationship." not in prompt
+
+
+def test_user_system_falls_back_to_persona_when_no_user_persona():
+    scenario = {"persona": "The user had a disagreement in a close relationship."}
+    prompt = _user_system(scenario, turns=6, metric=None, perfunctory=False, landmarks=False)
+    assert "The user had a disagreement in a close relationship." in prompt
