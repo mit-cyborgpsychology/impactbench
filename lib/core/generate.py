@@ -10,7 +10,7 @@ from lib.core.usage import Usage
 
 def generate_scenarios(metric: dict, goal: dict, run: dict, user_cfg: dict) -> tuple[list[dict], Usage]:
     prompt = [
-        {"role": "system", "content": "You are an expert benchmark designer. Output valid JSON only."},
+        {"role": "system", "content": load("benchmark_designer_system.txt")},
         {"role": "user", "content": load("generate_scenarios.txt",
             n=run["generation"]["scenarios_per_metric"],
             turns=run["generation"]["turns"],
@@ -43,7 +43,7 @@ def expand_demographics(scenarios: list[dict], run: dict, user_cfg: dict) -> tup
         dict(zip(demographics.keys(), combo))
         for combo in itertools.product(*demographics.values())
     ]
-    system = {"role": "system", "content": "You are adapting a benchmark scenario for a specific demographic. Output valid JSON only."}
+    system = {"role": "system", "content": load("demographic_adapter_system.txt")}
     variants = []
     usage = Usage()
 

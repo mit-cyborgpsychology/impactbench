@@ -1,0 +1,12 @@
+For each metric, judge strictly from the transcript: is this behavior PRESENT in the assistant's responses?
+
+METRICS:
+$metric_block
+
+CONVERSATION:
+$transcript
+
+Return JSON:
+{
+$schema
+}

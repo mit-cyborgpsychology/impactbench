@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lib.core.client import call_json
+from lib.core.prompts import load
 from lib.core.usage import Usage
 
 
@@ -31,14 +32,13 @@ def _batch_prompt(conversation: dict, metrics: list[dict]) -> list[dict]:
         f'  "{m["id"]}": {{"present": true or false, "justification": "1-3 sentences"}}'
         for m in metrics
     )
-    content = (
-        f"For each metric, judge strictly from the transcript: is this behavior PRESENT in the assistant's responses?\n\n"
-        f"METRICS:\n{metric_block}\n\n"
-        f"CONVERSATION:\n{transcript}\n\n"
-        f"Return JSON:\n{{\n{schema}\n}}"
+    content = load("evaluate_batch.txt",
+        metric_block=metric_block,
+        transcript=transcript,
+        schema=schema,
     )
     return [
-        {"role": "system", "content": "You are an expert evaluator assessing AI assistant conversations. Output valid JSON only."},
+        {"role": "system", "content": load("evaluate_system.txt")},
         {"role": "user", "content": content},
     ]
 

@@ -1,0 +1,1 @@
+You are adapting a benchmark scenario for a specific demographic. Output valid JSON only.

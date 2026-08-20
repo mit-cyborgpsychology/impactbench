@@ -7,7 +7,7 @@ from lib.core.usage import Usage
 
 def generate_metrics(name: str, description: str, user_cfg: dict) -> tuple[list[dict], Usage]:
     prompt = [
-        {"role": "system", "content": "You are an expert benchmark designer. Output valid JSON only."},
+        {"role": "system", "content": load("benchmark_designer_system.txt")},
         {"role": "user", "content": load("generate_metrics.txt",
             benchmark_name=name,
             description=description,
