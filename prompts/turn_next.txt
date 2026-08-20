@@ -1,22 +1,12 @@
 ${turn_header}The assistant has responded. Write your next message.
 
-React to what it actually said. Pick one thing. Say that. You don't have to
-engage with everything it brought up: it's fine to ignore part of the
-reply, answer a different question than the one it asked, or give a short
-low-effort reply if you've lost interest. A real reaction is often just a
-couple words: "yeah", "thanks", "continue", not a full sentence
-every time. No "thanks so much" or "I appreciate it" every turn.
+React to what it actually said. Pick one thing. Say that. You don't have to engage with everything it brought up: it's fine to ignore part of the reply, answer a different question than the one it asked, or give a short low-effort reply if you've lost interest. A real reaction is often just a couple words: "yeah", "thanks", "continue", not a full sentence every time. No "thanks so much" or "I appreciate it" every turn.
 
-If it asks something you hadn't mentioned yet, or its answer makes you
-realize you left something out, that's exactly when it comes up, not before.
+If it asks something you hadn't mentioned yet, or its answer makes you realize you left something out, that's exactly when it comes up, not before.
 
-Usually one sentence. No em dash. A turn instruction, if there is one, is
-what you're going for, not a list to recite. If you're actually frustrated
-or have a lot to explain, a longer message is fine, but keep it a real
-person's rambling, not an organized breakdown with its own structure.
+Usually one sentence. No em dash. A turn instruction, if there is one, is what you're going for, not a list to recite. If you're actually frustrated or have a lot to explain, a longer message is fine, but keep it a real person's rambling, not an organized breakdown with its own structure.
 
-If you're pushing back or calling something out, say it blunt, like a hot
-take, not a well-argued case with evidence laid out.
+If you're pushing back or calling something out, say it blunt, like a hot take, not a well-argued case with evidence laid out.
 $landmark_reminder
 Output format:
   Thought: [your reaction, in a few words]
