@@ -175,15 +175,11 @@ def simulate(
             target_msg, u, target_reasoning = call(target, target_messages)
         except (ContentFilterError, EmptyStopError, SafetyRejectionError) as exc:
             # No fallback for the target — it's the thing under test, so a
-            # block here is a measurement, not a bug to route around.
-            # Recorded so the caller's normal outer retry (regenerate this
-            # turn's user message, try again) has a trail of what happened.
-            # Checkpointed immediately (not just appended in-memory): this
-            # whole attempt is about to raise and be discarded by retry(),
-            # so without an explicit checkpoint here the event would vanish
-            # unless a later attempt happens to also get checkpointed past
-            # this point — losing the record of a block that a rephrased
-            # retry later worked around.
+            # block here IS the result being measured, not a bug to route
+            # around. Ends the conversation here (like a normal user
+            # "terminate conversation"): regenerating and retrying would
+            # keep rerolling the user's phrasing until something slips past
+            # the filter, which discards the very outcome being measured.
             if isinstance(exc, ContentFilterError):
                 reason = "content_filter"
             elif isinstance(exc, EmptyStopError):
@@ -192,9 +188,9 @@ def simulate(
                 reason = "safety_rejection"
             censorship_events.append({"turn": turn, "role": "target", "reason": reason,
                                         "context": target_messages[-1]["content"][:300]})
-            if on_turn:
-                on_turn(transcript, user_usage, target_usage, censorship_events)
-            raise
+            if verbose:
+                print(f"  [{scenario['id']}] turn {turn}: target {reason}, ending conversation", flush=True)
+            break
         target_usage = target_usage + u
         history.append({"role": "assistant", "content": target_msg})
         target_entry = {"role": "assistant", "content": target_msg}

@@ -251,7 +251,11 @@ def test_simulate_no_fallbacks_configured_behaves_like_before(monkeypatch):
         simulate(scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"})
 
 
-def test_simulate_target_content_filter_has_no_fallback_and_reraises(monkeypatch):
+def test_simulate_target_content_filter_has_no_fallback_and_ends_conversation(monkeypatch):
+    # The target has no fallback: a block there IS the result being
+    # measured, so simulate() ends the conversation on the spot (like a
+    # normal user "terminate conversation") instead of raising for the
+    # outer retry to regenerate and reroll the user's phrasing.
     monkeypatch.setattr("lib.core.simulate.load", lambda name, **kw: "")
     monkeypatch.setattr("lib.core.simulate._parse_message", lambda raw, perfunctory: raw)
 
@@ -261,16 +265,25 @@ def test_simulate_target_content_filter_has_no_fallback_and_reraises(monkeypatch
         return "user message", _U, None
 
     monkeypatch.setattr("lib.core.simulate.call", fake_call)
+    checkpoints = []
     scenario = {"id": "s1", "user_persona": "p", "user_goal": "g"}
-    with pytest.raises(ContentFilterError):
-        simulate(scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"})
+    transcript, _uu, _tu, events = simulate(
+        scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"},
+        on_turn=lambda transcript, uu, tu, events: checkpoints.append(list(events)),
+    )
+    # Ends right after the user's triggering message — no target reply.
+    assert [t["role"] for t in transcript] == ["user"]
+    assert events[-1]["role"] == "target"
+    assert events[-1]["reason"] == "content_filter"
+    # No on_turn checkpoint for this turn: nothing new was appended to the
+    # transcript, so the final return value is the only place this lands.
+    assert not checkpoints
 
 
-def test_simulate_target_empty_stop_has_no_fallback_and_reraises(monkeypatch):
+def test_simulate_target_empty_stop_has_no_fallback_and_ends_conversation(monkeypatch):
     # finish_reason=stop with empty content is a distinct, named failure --
     # recorded with reason "empty_stop" (not "content_filter"), same
-    # no-fallback treatment as a real content block: the target is the
-    # thing under test, so this is a measurement, not routed around.
+    # no-fallback, ends-the-conversation treatment as a real content block.
     monkeypatch.setattr("lib.core.simulate.load", lambda name, **kw: "")
     monkeypatch.setattr("lib.core.simulate._parse_message", lambda raw, perfunctory: raw)
 
@@ -280,21 +293,19 @@ def test_simulate_target_empty_stop_has_no_fallback_and_reraises(monkeypatch):
         return "user message", _U, None
 
     monkeypatch.setattr("lib.core.simulate.call", fake_call)
-    checkpoints = []
     scenario = {"id": "s1", "user_persona": "p", "user_goal": "g"}
-    with pytest.raises(EmptyStopError):
-        simulate(
-            scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"},
-            on_turn=lambda transcript, uu, tu, events: checkpoints.append(list(events)),
-        )
-    assert checkpoints[-1][0]["role"] == "target"
-    assert checkpoints[-1][0]["reason"] == "empty_stop"
+    transcript, _uu, _tu, events = simulate(
+        scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"},
+    )
+    assert [t["role"] for t in transcript] == ["user"]
+    assert events[-1]["role"] == "target"
+    assert events[-1]["reason"] == "empty_stop"
 
 
-def test_simulate_target_safety_rejection_has_no_fallback_and_reraises(monkeypatch):
+def test_simulate_target_safety_rejection_has_no_fallback_and_ends_conversation(monkeypatch):
     # A provider-level 403 safety rejection is recorded with its own
-    # distinct reason ("safety_rejection"), same no-fallback treatment as
-    # the other two target-side block shapes.
+    # distinct reason ("safety_rejection"), same no-fallback, ends-the-
+    # conversation treatment as the other two target-side block shapes.
     monkeypatch.setattr("lib.core.simulate.load", lambda name, **kw: "")
     monkeypatch.setattr("lib.core.simulate._parse_message", lambda raw, perfunctory: raw)
 
@@ -304,39 +315,13 @@ def test_simulate_target_safety_rejection_has_no_fallback_and_reraises(monkeypat
         return "user message", _U, None
 
     monkeypatch.setattr("lib.core.simulate.call", fake_call)
-    checkpoints = []
     scenario = {"id": "s1", "user_persona": "p", "user_goal": "g"}
-    with pytest.raises(SafetyRejectionError):
-        simulate(
-            scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"},
-            on_turn=lambda transcript, uu, tu, events: checkpoints.append(list(events)),
-        )
-    assert checkpoints[-1][0]["role"] == "target"
-    assert checkpoints[-1][0]["reason"] == "safety_rejection"
-
-
-def test_simulate_checkpoints_target_censorship_event_before_reraising(monkeypatch):
-    # The whole call raises (row_cache/retry discard the return value), so
-    # the event must reach the caller via on_turn's checkpoint, not just the
-    # (unreachable) return value.
-    monkeypatch.setattr("lib.core.simulate.load", lambda name, **kw: "")
-    monkeypatch.setattr("lib.core.simulate._parse_message", lambda raw, perfunctory: raw)
-
-    def fake_call(cfg, messages):
-        if cfg.get("model") == "target-x":
-            raise ContentFilterError("target blocked")
-        return "user message", _U, None
-
-    monkeypatch.setattr("lib.core.simulate.call", fake_call)
-    checkpoints = []
-    scenario = {"id": "s1", "user_persona": "p", "user_goal": "g"}
-    with pytest.raises(ContentFilterError):
-        simulate(
-            scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"},
-            on_turn=lambda transcript, uu, tu, events: checkpoints.append(list(events)),
-        )
-    assert checkpoints, "on_turn should have been called with the censorship event before the raise"
-    assert checkpoints[-1][0]["role"] == "target"
+    transcript, _uu, _tu, events = simulate(
+        scenario, target={"model": "target-x"}, cfg=_cfg(), user_cfg={"model": "primary-user"},
+    )
+    assert [t["role"] for t in transcript] == ["user"]
+    assert events[-1]["role"] == "target"
+    assert events[-1]["reason"] == "safety_rejection"
 
 
 def test_simulate_raises_when_user_model_and_all_fallbacks_produce_empty(monkeypatch):
