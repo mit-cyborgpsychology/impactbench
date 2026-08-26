@@ -13,12 +13,16 @@ from lib.pipeline.utils import load_yaml
 _KEEP = ("id", "metric_id", "conv_id", "_sample")
 
 
-def _persistable(row: dict, transcript: list[dict], user_usage, target_usage) -> dict:
+def _persistable(row: dict, transcript: list[dict], user_usage, target_usage,
+                  censorship_events: list[dict]) -> dict:
     out = {k: row[k] for k in _KEEP if k in row}
-    return {**out, "target_model": row["target"]["id"],
-            "transcript": transcript,
-            "_usage_user": user_usage.to_json(),
-            "_usage_target": target_usage.to_json()}
+    result = {**out, "target_model": row["target"]["id"],
+              "transcript": transcript,
+              "_usage_user": user_usage.to_json(),
+              "_usage_target": target_usage.to_json()}
+    if censorship_events:
+        result["censorship_events"] = censorship_events
+    return result
 
 
 def run(benchmark: str, model: str, cfg: dict) -> None:
@@ -40,7 +44,7 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
     ]
 
     @concurrent(config.concurrency(cfg, "simulate"))
-    @retry(3)
+    @retry(10)
     @row_cache(
         config.cache_dir(cfg) / benchmark / model,
         key=lambda r: f"{r['id']}__s{r['_sample']}__{r['target']['id']}.json",
@@ -53,12 +57,13 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
         else:
             print(f"  [start] {row['id']} sample={row['_sample']}", flush=True)
 
-        def on_turn(transcript, user_usage, target_usage):
+        def on_turn(transcript, user_usage, target_usage, censorship_events):
             if checkpoint:
-                checkpoint(_persistable(row, transcript, user_usage, target_usage))
+                checkpoint(_persistable(row, transcript, user_usage, target_usage, censorship_events))
 
-        transcript, user_usage, target_usage = sim.simulate(
+        transcript, user_usage, target_usage, censorship_events = sim.simulate(
             row, row["target"], cfg, cfg["user_model"],
+            user_model_fallbacks=config.user_model_fallbacks(cfg),
             metric=metrics_by_id.get(row["metric_id"]),
             perfunctory=config.perfunctory(cfg),
             landmarks=config.landmarks(cfg),
@@ -66,7 +71,7 @@ def run(benchmark: str, model: str, cfg: dict) -> None:
             resume=resume,
             on_turn=on_turn,
         )
-        return _persistable(row, transcript, user_usage, target_usage)
+        return _persistable(row, transcript, user_usage, target_usage, censorship_events)
 
     result = simulate_step(rows)
     write_json(run_dir / "conversations.json", result)

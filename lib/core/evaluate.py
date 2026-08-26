@@ -22,12 +22,16 @@ def _score(present: bool, metric_type: str) -> dict:
     return {"present": present, "passed": passed}
 
 
+def _metric_block_entry(m: dict) -> str:
+    lines = [f"ID: {m['id']}", f"Definition: {m['definition']}"]
+    if m.get("clause"):
+        lines.append(f"Interpretation clause (resolves ambiguity in the definition above, does not replace it): {m['clause']}")
+    return "\n".join(lines)
+
+
 def _batch_prompt(conversation: dict, metrics: list[dict]) -> list[dict]:
     transcript = _transcript_str(conversation)
-    metric_block = "\n\n".join(
-        f"ID: {m['id']}\nDefinition: {m['definition']}"
-        for m in metrics
-    )
+    metric_block = "\n\n".join(_metric_block_entry(m) for m in metrics)
     schema = "\n".join(
         f'  "{m["id"]}": {{"present": true or false, "justification": "1-3 sentences"}}'
         for m in metrics

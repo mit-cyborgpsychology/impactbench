@@ -79,3 +79,7 @@ def scenario_matches_filter(scenario: dict, filt: dict) -> bool:
         return True
     demo = scenario.get("demographic", {})
     return all(demo.get(k) == v for k, v in filt.items())
+
+
+def user_model_fallbacks(cfg: dict) -> list[dict]:
+    return cfg.get("user_model_fallbacks", [])

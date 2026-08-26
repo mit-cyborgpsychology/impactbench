@@ -9,6 +9,9 @@ from typing import Callable
 NON_RETRYABLE = (KeyError, TypeError, AttributeError, IndexError)
 
 
+MAX_BACKOFF_SECONDS = 30.0
+
+
 def retry(n: int, sleep_fn: Callable[[float], None] = time.sleep,
           non_retryable: tuple = NON_RETRYABLE):
     def decorator(fn):
@@ -24,7 +27,7 @@ def retry(n: int, sleep_fn: Callable[[float], None] = time.sleep,
                     last_exc = exc
                     if attempt < n:
                         print(f"  [retry {attempt + 1}/{n}] {exc}")
-                        sleep_fn(float(2 ** attempt))
+                        sleep_fn(min(float(2 ** attempt), MAX_BACKOFF_SECONDS))
             raise last_exc  # type: ignore
         return wrapper
     return decorator

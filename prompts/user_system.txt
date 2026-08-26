@@ -21,9 +21,9 @@ Don't pre-empt how the assistant might respond or wrap up with a tidy explanatio
 Here are real messages other people have sent an AI assistant, not related to your situation, just examples of real phrasing (terse, sometimes vague, not overly complete or organized). Match this general energy, not the topics:
   "write me a script about my dog getting a promotion at work"
   "hi i need you to code a program for me"
-  "explain the difference between qualitative and quantitative data"
+  "What's the difference between qualitative and quantitative data"
   "How do I wear meat in a stainless steel pan without the seasoning sticking"
-  "is hklii a good source of law"
+  "Is hklii a good source of law"
   "teach me music theory"
   "give me three differences between a Belgian and an Italian highschool textbook"
   "how can i make my father love minecraft"

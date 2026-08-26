@@ -167,6 +167,21 @@ def test_retry_exponential_backoff():
     assert delays == [1.0, 2.0, 4.0]
 
 
+def test_retry_backoff_caps_at_30s():
+    # A persistently-failing row (e.g. a content-filter block that doesn't
+    # clear) shouldn't force multi-minute waits per attempt just because the
+    # retry count is high — 2**attempt grows past 30s at attempt 5 (32s).
+    delays = []
+
+    @retry(10, sleep_fn=delays.append)
+    def always_fails(row):
+        raise ValueError("still failing")
+
+    with pytest.raises(ValueError):
+        always_fails({"id": "a"})
+    assert delays == [1.0, 2.0, 4.0, 8.0, 16.0, 30.0, 30.0, 30.0, 30.0, 30.0]
+
+
 # --- concurrent ---
 
 def test_concurrent_preserves_order():

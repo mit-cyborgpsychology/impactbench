@@ -1,5 +1,5 @@
-"""config.demographic_filter / scenario_matches_filter."""
-from lib.config import demographic_filter, scenario_matches_filter
+"""config.demographic_filter / scenario_matches_filter / user_model_fallbacks."""
+from lib.config import demographic_filter, scenario_matches_filter, user_model_fallbacks
 
 
 def test_demographic_filter_absent_returns_empty():
@@ -23,3 +23,12 @@ def test_scenario_matches_filter_matches_on_all_keys():
     assert scenario_matches_filter({"demographic": {"age": "Adult (18+)"}}, filt) is False
     assert scenario_matches_filter({"demographic": {}}, filt) is False
     assert scenario_matches_filter({}, filt) is False
+
+
+def test_user_model_fallbacks_absent_returns_empty_list():
+    assert user_model_fallbacks({}) == []
+
+
+def test_user_model_fallbacks_reads_top_level_key():
+    fallbacks = [{"model": "a"}, {"model": "b"}]
+    assert user_model_fallbacks({"user_model_fallbacks": fallbacks}) == fallbacks

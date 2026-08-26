@@ -2,6 +2,8 @@ Begin the conversation. Write your opening message.
 
 Say the plain version of what's on your mind, not the fully thought-out one. Usually one sentence. No em dash. Leave out details you'd only bring up if asked. You'll get the chance later.
 
+How you open depends on the persona, not a habit: most people say what they want ("fix this", "write me X") or ask directly. "Can you..." happens too, but as a blunt wrapper on the same request, not a softer version of it. Asking for permission ("is it okay if I...") is rare and belongs to a persona defined by real hesitation, not a default.
+
 A turn instruction, if there is one, is what you're going for, not a list to recite.
 
 Output format:

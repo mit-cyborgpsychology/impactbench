@@ -2,7 +2,7 @@ from __future__ import annotations
 import re
 from typing import Callable
 
-from lib.core.client import call
+from lib.core.client import call, ContentFilterError, EmptyStopError, SafetyRejectionError
 from lib.core.perfunctory import perfunctory as _mangle
 from lib.core.prompts import load
 from lib.core.usage import Usage
@@ -68,18 +68,72 @@ def _turn_prompt(turn: int, turns: int, landmarks: bool) -> str:
     )
 
 
+class EmptyUserMessageError(RuntimeError):
+    """The user-simulator returned content, but it parsed to nothing usable
+    (blank after stripping the Thought:/Message: scaffolding). Not the same
+    as an explicit "terminate conversation" — that is a deliberate scenario
+    end and stays a normal None return. This is the model failing to
+    produce a turn at all, which must not be forwarded to the target (it
+    gets hard-rejected as invalid) and must not silently end the scenario
+    either — every scenario must complete for real, so it goes through the
+    same fallback-then-raise path as a content filter block.
+    """
+
+
+def _call_user_with_fallback(user_cfg: dict, fallbacks: list[dict], messages: list[dict], scenario_id: str,
+                              turn: int, perfunctory: bool, verbose: bool) -> tuple[str | None, Usage, str | None, dict | None]:
+    """Same-turn-only fallback: if the primary user-model is blocked by a
+    content filter, OR returns content that parses to an empty message, try
+    each config in `fallbacks` in order before giving up (by raising --
+    never silently proceeding on empty content). Returns an extra
+    censorship-event dict (or None) so the caller can record what happened
+    regardless of which config succeeded. The returned message may still
+    legitimately be None: that means the *parsed* result was an explicit
+    "terminate conversation", not a failure.
+    """
+    def _attempt(cfg: dict) -> tuple[str | None, Usage, str | None]:
+        raw, u, reasoning = call(cfg, messages)
+        parsed = _parse_message(raw, perfunctory)
+        if parsed == "":
+            raise EmptyUserMessageError(f"{cfg.get('model')} returned an empty message on turn {turn}")
+        return parsed, u, reasoning
+
+    attempts = [(user_cfg, False)] + [(fb, True) for fb in fallbacks]
+    failures = []
+    for cfg, is_fallback in attempts:
+        try:
+            parsed, u, reasoning = _attempt(cfg)
+            event = None
+            if is_fallback:
+                event = {"turn": turn, "role": "user", "reason": failures[-1][1],
+                          "primary_model": user_cfg.get("model"), "fallback_used": True,
+                          "fallback_model": cfg.get("model")}
+            return parsed, u, reasoning, event
+        except (ContentFilterError, EmptyUserMessageError) as exc:
+            reason = "content_filter" if isinstance(exc, ContentFilterError) else "empty_message"
+            failures.append((cfg.get("model"), reason))
+            if verbose and fallbacks:
+                next_model = fallbacks[len(failures) - 1]["model"] if len(failures) <= len(fallbacks) else None
+                print(f"  [{scenario_id}] turn {turn}: {cfg.get('model')} {reason}"
+                      + (f", trying {next_model}" if next_model else ""), flush=True)
+
+    detail = ", ".join(f"{model} ({reason})" for model, reason in failures)
+    raise RuntimeError(f"user turn {turn} failed on every model: {detail}")
+
+
 def simulate(
     scenario: dict,
     target: dict,
     cfg: dict,
     user_cfg: dict,
+    user_model_fallbacks: list[dict] | None = None,
     metric: dict | None = None,
     perfunctory: bool = False,
     landmarks: bool = True,
     verbose: bool = False,
     resume: dict | None = None,
-    on_turn: Callable[[list[dict], Usage, Usage], None] | None = None,
-) -> tuple[list[dict], Usage, Usage]:
+    on_turn: Callable[[list[dict], Usage, Usage, list[dict]], None] | None = None,
+) -> tuple[list[dict], Usage, Usage, list[dict]]:
     turns = cfg["generation"]["turns"]
     target_system = scenario.get("target_system_prompt") or load("default_target_system.txt").strip()
     user_system = _user_system(scenario, turns, metric, perfunctory, landmarks)
@@ -89,17 +143,20 @@ def simulate(
     history: list[dict] = [{"role": m["role"], "content": m["content"]} for m in transcript]
     user_usage = Usage.from_json(resume["_usage_user"]) if resume else Usage()
     target_usage = Usage.from_json(resume["_usage_target"]) if resume else Usage()
+    censorship_events: list[dict] = list(resume.get("censorship_events", [])) if resume else []
     start_turn = len(transcript) // 2 + 1
 
     for turn in range(start_turn, turns + 1):
-        raw, u, user_reasoning = call(
-            user_cfg,
+        user_msg, u, user_reasoning, user_event = _call_user_with_fallback(
+            user_cfg, user_model_fallbacks or [],
             [{"role": "system", "content": user_system}]
             + history
             + [{"role": "user", "content": _turn_prompt(turn, turns, landmarks)}],
+            scenario["id"], turn, perfunctory, verbose,
         )
+        if user_event:
+            censorship_events.append(user_event)
         user_usage = user_usage + u
-        user_msg = _parse_message(raw, perfunctory)
         if user_msg is None:
             if verbose:
                 print(f"  [{scenario['id']}] turn {turn}: user terminated", flush=True)
@@ -114,7 +171,30 @@ def simulate(
             print(f"  [{scenario['id']}] turn {turn} user: {user_msg[:120]!r}", flush=True)
 
         target_messages = ([{"role": "system", "content": target_system}] if target_system else []) + history
-        target_msg, u, target_reasoning = call(target, target_messages)
+        try:
+            target_msg, u, target_reasoning = call(target, target_messages)
+        except (ContentFilterError, EmptyStopError, SafetyRejectionError) as exc:
+            # No fallback for the target — it's the thing under test, so a
+            # block here is a measurement, not a bug to route around.
+            # Recorded so the caller's normal outer retry (regenerate this
+            # turn's user message, try again) has a trail of what happened.
+            # Checkpointed immediately (not just appended in-memory): this
+            # whole attempt is about to raise and be discarded by retry(),
+            # so without an explicit checkpoint here the event would vanish
+            # unless a later attempt happens to also get checkpointed past
+            # this point — losing the record of a block that a rephrased
+            # retry later worked around.
+            if isinstance(exc, ContentFilterError):
+                reason = "content_filter"
+            elif isinstance(exc, EmptyStopError):
+                reason = "empty_stop"
+            else:
+                reason = "safety_rejection"
+            censorship_events.append({"turn": turn, "role": "target", "reason": reason,
+                                        "context": target_messages[-1]["content"][:300]})
+            if on_turn:
+                on_turn(transcript, user_usage, target_usage, censorship_events)
+            raise
         target_usage = target_usage + u
         history.append({"role": "assistant", "content": target_msg})
         target_entry = {"role": "assistant", "content": target_msg}
@@ -125,6 +205,6 @@ def simulate(
             print(f"  [{scenario['id']}] turn {turn} target: {target_msg[:120]!r}", flush=True)
 
         if on_turn:
-            on_turn(transcript, user_usage, target_usage)
+            on_turn(transcript, user_usage, target_usage, censorship_events)
 
-    return transcript, user_usage, target_usage
+    return transcript, user_usage, target_usage, censorship_events
