@@ -1,6 +1,6 @@
 # Open Benchmark of AI Impact on Humans
 
-[Documentation]((https://docs.impactbench.cyborglab.org))
+[Documentation](https://docs.impactbench.cyborglab.org)
 
 Pipeline for running LLM behavioral benchmarks. Given a benchmark description, it generates metrics, constructs adversarial scenarios, simulates multi-turn conversations, and scores them.
 
