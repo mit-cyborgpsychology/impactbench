@@ -1,6 +1,6 @@
 # Open Benchmark of AI Impact on Humans
 
-[Pipeline (This repo)](https://github.com/chayapatr/impactbench) · [Website](https://github.com/chayapatr/impactbench-web) · [Documentation](https://github.com/chayapatr/impactbench-docs)
+[Documentation]([https://github.com/chayapatr/impactbench](https://docs.impactbench.cyborglab.org))
 
 Pipeline for running LLM behavioral benchmarks. Given a benchmark description, it generates metrics, constructs adversarial scenarios, simulates multi-turn conversations, and scores them.
 
